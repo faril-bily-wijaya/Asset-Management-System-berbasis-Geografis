@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { Server, Activity, Search, MapPin, Zap, HardDrive, Layers, PieChart as PieChartIcon, Menu, X, Download, Moon, Sun, Filter, LocateFixed, BarChart3, Info, Edit2, Save, Flame, Network } from 'lucide-react';
 import { isCatuDaya } from './utils/parser';
 import { generateTopologyLinks } from './utils/topology';
+import { getDistrictForLocation, DISTRICT_LIST } from './utils/hierarchy';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
@@ -43,13 +44,25 @@ const gpsIcon = L.divIcon({
   iconAnchor: [12, 12]
 });
 
-function MapController({ activeLocation }) {
+function MapController({ activeLocation, locationsData, districtFilter }) {
   const map = useMap();
+  
   useEffect(() => {
     if (activeLocation) {
       map.flyTo(activeLocation, 14, { duration: 1.5 });
     }
   }, [activeLocation, map]);
+
+  useEffect(() => {
+    if (districtFilter !== 'ALL' && locationsData && locationsData.length > 0 && !activeLocation) {
+      const bounds = L.latLngBounds(locationsData.map(loc => loc.coords));
+      map.flyToBounds(bounds, { duration: 1.5, padding: [50, 50] });
+    } else if (districtFilter === 'ALL' && !activeLocation && locationsData && locationsData.length > 0) {
+      // Return to default view if all districts
+      map.flyTo([-3.1, 103.5], 7.5, { duration: 1.5 });
+    }
+  }, [districtFilter, locationsData, map, activeLocation]);
+
   return null;
 }
 
@@ -59,6 +72,7 @@ function App() {
   const statusFilter = searchParams.get('status') || 'ALL';
   const conditionFilter = searchParams.get('condition') || 'ALL';
   const brandFilter = searchParams.get('brand') || 'ALL';
+  const districtFilter = searchParams.get('district') || 'ALL';
   const search = searchParams.get('search') || '';
 
   const updateSearchParams = (key, val) => {
@@ -73,6 +87,7 @@ function App() {
   const setStatusFilter = (val) => updateSearchParams('status', val);
   const setConditionFilter = (val) => updateSearchParams('condition', val);
   const setBrandFilter = (val) => updateSearchParams('brand', val);
+  const setDistrictFilter = (val) => { updateSearchParams('district', val); setActiveLocation(null); }; // reset active location to zoom out
   const setSearch = (val) => updateSearchParams('search', val);
 
   const [mapStyle, setMapStyle] = useState('street');
@@ -183,6 +198,12 @@ function App() {
     let nonOp = 0;
 
     const newLocations = rawLocationsData.map(loc => {
+      // 1. Filter tingkat Lokasi (District)
+      if (districtFilter !== 'ALL' && getDistrictForLocation(loc.name) !== districtFilter) {
+        return null;
+      }
+
+      // 2. Filter tingkat Perangkat
       const filteredDevices = loc.devices.filter(d => {
         const isCD = isCatuDaya(d.DEVICE_TYPE);
         if (filter === 'CATU_DAYA' && !isCD) return false;
@@ -220,11 +241,11 @@ function App() {
         catuDayaCount,
         nonCatuDayaCount
       };
-    }).filter(loc => loc.devices.length > 0);
+    }).filter(loc => loc !== null && loc.devices.length > 0);
 
     setLocationsData(newLocations);
     setStats({ total: totalDevs, catuDaya: cDaya, nonCatuDaya: nonCDaya, operational: op, nonOperational: nonOp });
-  }, [rawLocationsData, filter, statusFilter, conditionFilter, brandFilter, search]);
+  }, [rawLocationsData, filter, statusFilter, conditionFilter, brandFilter, search, districtFilter]);
 
   const handleSearchEnter = (e) => {
     if (e.key === 'Enter') {
@@ -545,6 +566,28 @@ function App() {
               </button>
             </div>
           </div>
+          
+          <div className="space-y-4 mt-8">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Filter Wilayah (District)</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => setDistrictFilter('ALL')}
+                className={`py-2 px-3 flex items-center justify-center rounded-xl border text-xs font-bold transition-all ${districtFilter === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+              >
+                SEMUA REGIONAL
+              </button>
+              {DISTRICT_LIST.map(district => (
+                <button 
+                  key={district}
+                  onClick={() => setDistrictFilter(district)}
+                  className={`py-2 px-2 flex items-center justify-center rounded-xl border text-[10px] sm:text-xs font-bold transition-all truncate ${districtFilter === district ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                >
+                  {district}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-4 mt-8">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tampilan Peta</h3>
             <div className="grid grid-cols-2 gap-2">
@@ -620,7 +663,7 @@ function App() {
         </AnimatePresence>
         
         <MapContainer center={[-3.1, 103.5]} zoom={7.5} className="w-full h-full" zoomControl={false} maxZoom={22}>
-          <MapController activeLocation={activeLocation} />
+          <MapController activeLocation={activeLocation} locationsData={locationsData} districtFilter={districtFilter} />
           {mapStyle === 'street' ? (
             <TileLayer
               attribution='&copy; <a href="https://www.google.com/intl/id_id/help/terms_maps/">Google Maps</a>'

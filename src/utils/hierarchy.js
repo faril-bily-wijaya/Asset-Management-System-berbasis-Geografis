@@ -1,0 +1,51 @@
+// Pemetaan hierarki Enterprise Telkomsel Regional Sumbagsel
+// District -> Array of Location (Site) Names
+
+export const DISTRICT_HIERARCHY = {
+  "JAMBI": [
+    "BANGKO", "JAMBI", "KOTA BARU", "KUALA TUNGKAL", "MANDALO", 
+    "MDF MUARA RUPIT", "MDF TELANAI PURA", "MUARA BULIAN", "MUARA BUNGO", 
+    "MUARA TEBO", "PANKALAN BULIAN", "PASIR PUTIH", "RIMBO BUJANG", 
+    "SAROLANGUN JAMBI", "SINGKUT", "SUNGAI PENUH", "TEBINGTINGGI JAMBI"
+  ],
+  "PANGKAL PINANG": [
+    "BELINYU", "JEBUS", "KELAPA", "KOBA", "MANGGAR", "MDF TEMPILANG", 
+    "MUNTOK", "PANGKAL PINANG", "SUNGAI LIAT", "TANJUNG PANDAN", "TOBOALI"
+  ],
+  "PALEMBANG": [
+    "BABAT TOMAN", "BATURAJA", "BELITANG", "BETUNG", "BUKIT SIGUNTANG", 
+    "INDRALAYA", "KAYU AGUNG", "KENTEN UJUNG", "MARTAPURA", 
+    "MDF U/ DLC PANGKALAN BALAI", "MUARADUA", "MUARA ENIM", "PALEMBANG CENTRUM", 
+    "PENDOPO TALANG UBI", "PLAJU", "PRABUMULIH", "SEBERANG ULU", "SEKAYU", 
+    "SERONG", "SUNGAI BUAH", "SUNGAI LILIN", "TALANG KELAPA", "TANJUNG BATU", 
+    "TANJUNG ENIM", "TANJUNG RAJA", "TUGUMULYO OKI", "UNIT"
+  ],
+  "LAMPUNG": [
+    "BANDAR JAYA", "BLAMBANGAN UMPU", "BUKIT KEMUNING", "FAJAR BULAN", 
+    "GEDONG TATAAN", "KALIANDA", "KALIREJO", "KEDATON", "KOTA AGUNG", 
+    "KOTABUMI", "KRUI", "LABUAN MARINGGAI", "LANGKAPURA", "LIWA", "MENGGALA", 
+    "METRO", "NATAR", "PANJANG", "PESUT", "PRINGSEWU", "SIGING", "SIMPANG PALAS", 
+    "SRIBAWONO", "SUKADANA", "TALANG PADANG", "TANJUNG KARANG", "TELUK BETUNG", 
+    "WAY JEPARA"
+  ],
+  "BENGKULU": [
+    // Cluster Bengkulu
+    "ARGA MAKMUR", "BINTUHAN", "IPUH", "KETAHUN", "MANNA", "MDF BENGKULU CENTRUM", 
+    "MDF CURUP", "MDF KEPAHIANG", "MDF MUARA AMAN", "MDF PAGAR DEWA", "MUKO-MUKO", "TAIS",
+    // Cluster Lubuk Linggau
+    "LAHAT", "LUBUKLINGGAU", "PAGAR ALAM", "PENDOPO LINTANG", "SIMPANG PERIUK", 
+    "TEBINGTINGGI SUMSEL", "TUGUMULYO MUSI RAWAS"
+  ]
+};
+
+// Fungsi bantuan untuk mendapatkan nama District dari sebuah lokasi
+export function getDistrictForLocation(locationName) {
+  for (const [district, locations] of Object.entries(DISTRICT_HIERARCHY)) {
+    if (locations.includes(locationName)) {
+      return district;
+    }
+  }
+  return "UNKNOWN";
+}
+
+export const DISTRICT_LIST = Object.keys(DISTRICT_HIERARCHY);
