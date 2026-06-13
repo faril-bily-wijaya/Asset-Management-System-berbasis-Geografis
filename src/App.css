@@ -1,0 +1,7 @@
+/* Cleared unused Vite boilerplate CSS */
+
+.map-satellite .marker-cluster,
+.map-satellite .marker-cluster div,
+.map-satellite .marker-cluster span {
+  color: white !important;
+}
