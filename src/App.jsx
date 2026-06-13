@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, CircleMarker, Polyline } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Server, Activity, Search, MapPin, Zap, HardDrive, Layers, PieChart as PieChartIcon, Menu, X, Download, Moon, Sun, Filter, LocateFixed, BarChart3, Info, Edit2, Save, Flame } from 'lucide-react';
+import { Server, Activity, Search, MapPin, Zap, HardDrive, Layers, PieChart as PieChartIcon, Menu, X, Download, Moon, Sun, Filter, LocateFixed, BarChart3, Info, Edit2, Save, Flame, Network } from 'lucide-react';
 import { isCatuDaya } from './utils/parser';
+import { generateTopologyLinks } from './utils/topology';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
@@ -80,6 +81,7 @@ function App() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [isHeatmapMode, setIsHeatmapMode] = useState(false);
+  const [showTopology, setShowTopology] = useState(true); // Default diaktifkan untuk pameran
   
   // Edit State
   const [editingDeviceId, setEditingDeviceId] = useState(null);
@@ -109,6 +111,10 @@ function App() {
       availableConditions: Array.from(conditions).sort()
     };
   }, [rawLocationsData, filter]);
+
+  const topologyLinks = useMemo(() => {
+    return generateTopologyLinks(locationsData);
+  }, [locationsData]);
 
   const [activeLocation, setActiveLocation] = useState(null);
   const [userGPSLocation, setUserGPSLocation] = useState(null);
@@ -588,6 +594,15 @@ function App() {
           <Flame className="w-6 h-6" />
         </button>
 
+        {/* Topology Toggle */}
+        <button 
+          onClick={() => setShowTopology(!showTopology)}
+          className={`absolute bottom-44 right-6 z-[1000] p-4 rounded-full shadow-2xl border-4 border-white dark:border-slate-800 transition-transform hover:scale-110 active:scale-95 ${showTopology ? 'bg-indigo-600 text-white' : 'bg-slate-800 dark:bg-slate-700 text-slate-300'}`}
+          title="Tampilkan Topologi Jaringan"
+        >
+          <Network className="w-6 h-6" />
+        </button>
+
         <AnimatePresence>
           {loading && (
             <motion.div 
@@ -627,6 +642,85 @@ function App() {
               <Popup>Lokasi Anda Saat Ini</Popup>
             </Marker>
           )}
+
+          {/* Render Topology Links */}
+          {showTopology && topologyLinks.map((link, idx) => {
+            // Logika Korelasi Jaringan (Domino Effect yang realistis)
+            const brokenDevices = link.target.devices ? link.target.devices.filter(d => d.STATUS !== 'OPERATIONAL') : [];
+            
+            // Pisahkan perangkat yang benar-benar memutus jaringan (Kritis) vs sekadar peringatan (Warning)
+            const criticalDevices = brokenDevices.filter(d => 
+              ['ROUTER', 'SWITCH', 'OLT', 'SERVER', 'GENSET', 'RECTIFIER', 'BATTERE', 'MDP'].some(type => d.DEVICE_TYPE.includes(type))
+            );
+            
+            const warningDevices = brokenDevices.filter(d => 
+              ['AC SPLIT', 'EXHAUST', 'LAMPU'].some(type => d.DEVICE_TYPE.includes(type)) || !criticalDevices.includes(d)
+            );
+
+            const isCritical = criticalDevices.length > 0;
+            const isWarning = warningDevices.length > 0 && !isCritical;
+            
+            // Penentuan Warna: Merah jika Kritis (Jaringan putus), Oranye jika Warning (Lingkungan/Suhu), Biru jika Normal
+            let linkColor = link.type === 'CORE_LINK' ? '#6366f1' : '#3b82f6'; // Default Normal
+            if (isCritical) linkColor = '#ef4444'; // Merah (Kritis)
+            else if (isWarning) linkColor = '#f59e0b'; // Oranye (Warning)
+            
+            const linkWeight = link.type === 'CORE_LINK' ? 4 : 2;
+            const linkDash = link.type === 'CORE_LINK' ? '' : '5, 10';
+
+            return (
+              <Polyline
+                key={`link-${idx}`}
+                positions={[link.source.coords, link.target.coords]}
+                eventHandlers={{
+                  click: () => {
+                    setActiveLocation(link.target.coords);
+                    setModalData({ name: link.target.name, devices: link.target.devices, coords: link.target.coords });
+                  }
+                }}
+                pathOptions={{
+                  color: linkColor,
+                  weight: linkWeight,
+                  opacity: 0.7,
+                  dashArray: linkDash
+                }}
+              >
+                <Tooltip sticky direction="top" className="premium-tooltip">
+                  <div className="p-1 min-w-[200px]">
+                    <p className="font-bold text-slate-800 border-b pb-1 mb-1">Link Jaringan</p>
+                    <p className="text-sm">Dari: <span className="font-semibold">{link.source.name}</span></p>
+                    <p className="text-sm">Ke: <span className="font-semibold">{link.target.name}</span></p>
+                    <p className="text-xs text-slate-500 mt-1">Jarak: {Math.round(link.distance)} km</p>
+                    
+                    {isCritical && (
+                      <div className="mt-2 pt-2 border-t border-red-200">
+                        <p className="text-xs text-red-600 font-bold mb-1">🚨 Jaringan Terputus!</p>
+                        <p className="text-[10px] text-red-500 mb-1">Penyebab Kritis:</p>
+                        <ul className="text-[10px] text-red-500 list-disc pl-3">
+                          {criticalDevices.slice(0, 3).map((d, i) => (
+                            <li key={i}>{d.DEVICE_TYPE} ({d.STATUS})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {isWarning && (
+                      <div className="mt-2 pt-2 border-t border-orange-200">
+                        <p className="text-xs text-orange-600 font-bold mb-1">⚠️ Peringatan Lingkungan</p>
+                        <p className="text-[10px] text-orange-500 mb-1">Jaringan aman, namun ada isu:</p>
+                        <ul className="text-[10px] text-orange-500 list-disc pl-3">
+                          {warningDevices.slice(0, 3).map((d, i) => (
+                            <li key={i}>{d.DEVICE_TYPE} ({d.STATUS})</li>
+                          ))}
+                        </ul>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">(Bisa menyebabkan *Overheat* jika dibiarkan)</p>
+                      </div>
+                    )}
+                  </div>
+                </Tooltip>
+              </Polyline>
+            );
+          })}
 
           {isHeatmapMode ? (
             locationsData.map((loc, idx) => {
