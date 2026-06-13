@@ -16,9 +16,12 @@ let devCounter = 1;
 data.forEach(location => {
   if (location.devices) {
     location.devices.forEach(device => {
-      // Anonymize Device Code
+      // Anonymize Device Code & internal CODE
       const id = String(devCounter).padStart(4, '0');
       device.DEVICE_CODE = `DEV-${id}`;
+      if (device.CODE) {
+        device.CODE = `SYS-${id}`;
+      }
       
       // Anonymize UID (IP or MAC)
       if (device.UID) {
