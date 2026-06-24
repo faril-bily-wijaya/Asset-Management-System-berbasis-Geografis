@@ -1,0 +1,516 @@
+{
+  "data": {
+    "data": [
+      {
+        "name": "ARGA MAKMUR",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "BABAT TOMAN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "BANDAR JAYA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "BANGKO",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "BATURAJA",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "BELINYU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "BELITANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "BETUNG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "BINTUHAN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "BLAMBANGAN UMPU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "BUKIT KEMUNING",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "BUKIT SIGUNTANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "GEDONG TATAAN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "INDRALAYA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "IPUH",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "JAMBI",
+        "class_type": "PREMIUM",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "JEBUS",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "KALIANDA",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "KALIREJO",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "KAYU AGUNG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "KEDATON",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "KENTEN UJUNG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "KETAHUN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "KOBA",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "KOTA BARU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "KOTA AGUNG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "MDF KEPAHIANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "KRUI",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "KUALA TUNGKAL",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "LABUAN MARINGGAI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "LAHAT",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LUBUK LINGGAU"
+      },
+      {
+        "name": "LIWA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "LANGKAPURA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "LUBUKLINGGAU",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER LUBUK LINGGAU"
+      },
+      {
+        "name": "MUARA BUNGO",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "MUARA BULIAN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "MANDALO",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "MUARA ENIM",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "METRO",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "MENGGALA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "MANGGAR",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "MUKO-MUKO",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "MANNA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "MARTAPURA",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "MUARA TEBO",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "MUNTOK",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "MDF MUARA AMAN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "MUARADUA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "MDF MUARA RUPIT",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "NATAR",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "PASIR PUTIH",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "MDF U/ DLC PANGKALAN BALAI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "PRABUMULIH",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "PENDOPO LINTANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LUBUK LINGGAU"
+      },
+      {
+        "name": "PENDOPO TALANG UBI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "MDF PAGAR DEWA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "PAGAR ALAM",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LUBUK LINGGAU"
+      },
+      {
+        "name": "PALEMBANG CENTRUM",
+        "class_type": "POP",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "PANGKAL PINANG",
+        "class_type": "PREMIUM",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "PANJANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "PANKALAN BULIAN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "PLAJU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "PRINGSEWU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "RIMBO BUJANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "SEBERANG ULU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "SUNGAI BUAH",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "SINGKUT",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "SUKADANA",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "SEKAYU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "SUNGAI LILIN",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "SUNGAI LIAT",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "SUNGAI PENUH",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "SIMPANG PERIUK",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LUBUK LINGGAU"
+      },
+      {
+        "name": "SIMPANG PALAS",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "SAROLANGUN JAMBI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "SERONG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "SRIBAWONO",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "TANJUNG BATU",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "TANJUNG ENIM",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "TOBOALI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "TUGUMULYO OKI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "TALANG PADANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "TAIS",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "TANJUNG KARANG",
+        "class_type": "POP",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "TANJUNG PANDAN",
+        "class_type": "ADVANCE",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "TELUK BETUNG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "TALANG KELAPA",
+        "class_type": "POP",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "TUGUMULYO MUSI RAWAS",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LUBUK LINGGAU"
+      },
+      {
+        "name": "TANJUNG RAJA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "TEBINGTINGGI SUMSEL",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LUBUK LINGGAU"
+      },
+      {
+        "name": "MDF TEMPILANG",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "MDF BENGKULU CENTRUM",
+        "class_type": "POP",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "KOTABUMI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "WAY JEPARA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "UNIT",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PALEMBANG"
+      },
+      {
+        "name": "TEBINGTINGGI JAMBI",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "MDF TELANAI PURA",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER JAMBI"
+      },
+      {
+        "name": "FBL",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "KAP",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER PANGKAL PINANG"
+      },
+      {
+        "name": "CRP",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER BENGKULU"
+      },
+      {
+        "name": "PST",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      },
+      {
+        "name": "SGX",
+        "class_type": "BASIC",
+        "organization_name": "CLUSTER LAMPUNG"
+      }
+    ]
+  }
+}
