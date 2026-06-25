@@ -27,11 +27,16 @@ export default function CoverageLayer({ locationsData, districtFilter, clusterFi
   // Load file GeoJSON saat komponen pertama kali dirender
   useEffect(() => {
     fetch('/DATA/indonesia-prov.geojson')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("File GeoJSON tidak ditemukan");
+        return res.json();
+      })
       .then(data => {
         setGeoData(data);
       })
-      .catch(err => console.error("Gagal meload GeoJSON provinsi:", err));
+      .catch(err => {
+        console.error("Gagal meload GeoJSON provinsi:", err);
+      });
   }, []);
 
   // Filter geojson features berdasarkan lokasi yang sedang aktif/difilter
