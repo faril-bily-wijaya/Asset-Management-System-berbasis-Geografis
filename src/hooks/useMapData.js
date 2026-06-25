@@ -3,6 +3,10 @@ import { isCatuDaya } from '../utils/parser';
 import { getDistrictForLocation, getClusterForLocation } from '../utils/hierarchy';
 import { generateTopologyLinks } from '../utils/topology';
 import toast from 'react-hot-toast';
+import { locationsAPI } from '../services/api';
+
+// Flag untuk menggunakan API atau localStorage
+const USE_API = import.meta.env.VITE_USE_API === 'true' || false;
 
 export default function useMapData(filters) {
   const {
@@ -54,15 +58,38 @@ export default function useMapData(filters) {
 
   // Load data on mount
   useEffect(() => {
-    // Fetch data from the live backend API instead of static JSON
-    fetch('/api/locations/map-data')
+    if (USE_API) {
+      // Fetch data from the live backend API using central api service
+      locationsAPI.getMapData()
+        .then(res => {
+          if (!res.data) throw new Error('API data not found');
+          const mergedData = res.data.map(loc => ({
+            ...loc,
+            class_type: loc.class_type || 'BASIC',
+            cluster: loc.cluster || 'TELKOM REGIONAL'
+          }));
+          setRawLocationsData(mergedData);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Gagal memuat data dari API", err);
+          // Fallback ke static JSON
+          loadStaticData();
+        });
+    } else {
+      // Load dari static JSON file
+      loadStaticData();
+    }
+  }, []);
+
+  // Helper function untuk load static data
+  const loadStaticData = () => {
+    fetch('/DATA/data-location.json')
       .then(res => {
-        if (!res.ok) throw new Error('API data not found');
+        if (!res.ok) throw new Error('Static data not found');
         return res.json();
       })
       .then(data => {
-        // Data already has coords, class_type, cluster from merge-data.js
-        // Just ensure defaults for locations without metadata
         const mergedData = data.map(loc => ({
           ...loc,
           class_type: loc.class_type || 'BASIC',
@@ -72,11 +99,11 @@ export default function useMapData(filters) {
         setLoading(false);
       })
       .catch(err => {
-        console.error("Gagal memuat data", err);
+        console.error("Gagal memuat data static", err);
         toast.error("Gagal memuat data sistem!");
         setLoading(false);
       });
-  }, []);
+  };
 
   // Reverse geocode active location
   useEffect(() => {
