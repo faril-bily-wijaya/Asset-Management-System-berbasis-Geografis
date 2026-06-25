@@ -41,6 +41,7 @@ echo [STEP 3] Uploading deployment scripts...
 echo =============================================
 scp setup-db.js %VPS_USER%@%VPS_IP%:/home/ubuntu/map-inventory/server/scripts/
 scp setup-vps.sh %VPS_USER%@%VPS_IP%:/home/ubuntu/map-inventory/server/scripts/
+scp migrate-json-to-db.js %VPS_USER%@%VPS_IP%:/home/ubuntu/map-inventory/server/scripts/
 
 echo.
 echo [STEP 4] Making scripts executable...

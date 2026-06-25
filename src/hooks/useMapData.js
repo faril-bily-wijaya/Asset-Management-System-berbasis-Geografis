@@ -54,13 +54,12 @@ export default function useMapData(filters) {
 
   // Load data on mount
   useEffect(() => {
-    // Load only data-grouped.json (now contains accurate coords, class_type, cluster)
-    fetch('/DATA_SECRET/data-grouped.json')
+    // Fetch data from the live backend API instead of static JSON
+    fetch('/api/locations/map-data')
       .then(res => {
-        if (!res.ok) throw new Error('Secret data not found');
+        if (!res.ok) throw new Error('API data not found');
         return res.json();
       })
-      .catch(() => fetch('/DATA/data-grouped.json').then(res => res.json()))
       .then(data => {
         // Data already has coords, class_type, cluster from merge-data.js
         // Just ensure defaults for locations without metadata

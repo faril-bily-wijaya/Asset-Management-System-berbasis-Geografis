@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS locations (
     region VARCHAR(100),
     city VARCHAR(100),
     postal_code VARCHAR(10),
+    cluster VARCHAR(100),
+    class_type VARCHAR(50),
     notes TEXT,
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

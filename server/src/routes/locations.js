@@ -42,6 +42,64 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
+// Get all locations optimized for map view
+router.get('/map-data', async (req, res) => {
+    try {
+        // Fetch all locations
+        const locationsResult = await pool.query(
+            `SELECT * FROM locations ORDER BY name ASC`
+        );
+        
+        // Fetch all devices with required fields for filtering
+        const devicesResult = await pool.query(
+            `SELECT d.*, 
+                    b.name as brand_name,
+                    r.name as room_name
+             FROM devices d
+             LEFT JOIN brands b ON d.brand_id = b.id
+             LEFT JOIN rooms r ON d.room_id = r.id`
+        );
+
+        // Group devices by location_id
+        const devicesByLocation = {};
+        for (const device of devicesResult.rows) {
+            if (!devicesByLocation[device.location_id]) {
+                devicesByLocation[device.location_id] = [];
+            }
+            // Map the database fields back to the format the frontend expects
+            devicesByLocation[device.location_id].push({
+                ...device,
+                DEVICE_CODE: device.name,
+                DEVICE_TYPE: device.device_type,
+                BRAND: device.brand_name,
+                ROOM: device.room_name,
+                STATUS: device.status === 'operational' ? 'OPERATIONAL' : 'FAULT',
+                CONDITION: device.notes,
+                CAP_REAL: device.capacity,
+                CAP_STATUS: device.capacity,
+                LOCATION: '', // The frontend will get this from the parent
+                YEAR: device.year_operations,
+                CODE: device.serial_number
+            });
+        }
+
+        // Map locations to the frontend format
+        const mapData = locationsResult.rows.map(loc => ({
+            id: loc.id,
+            name: loc.name,
+            coords: [parseFloat(loc.latitude), parseFloat(loc.longitude)],
+            cluster: loc.cluster || 'CLUSTER BENGKULU',
+            class_type: loc.class_type || 'BASIC',
+            devices: devicesByLocation[loc.id] || []
+        }));
+
+        res.json(mapData);
+    } catch (error) {
+        console.error('Get map data error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Get single location
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
