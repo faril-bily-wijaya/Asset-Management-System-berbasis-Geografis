@@ -49,7 +49,7 @@ router.get('/map-data', async (req, res) => {
         const locationsResult = await pool.query(
             `SELECT * FROM locations ORDER BY name ASC`
         );
-        
+
         // Fetch all devices with required fields for filtering
         const devicesResult = await pool.query(
             `SELECT d.*, 
@@ -154,13 +154,13 @@ router.post('/', authenticateToken, [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { name, address, latitude, longitude, region, city, postal_code, notes } = req.body;
+        const { name, address, latitude, longitude, region, city, postal_code, cluster, class_type, notes } = req.body;
 
         const result = await pool.query(
-            `INSERT INTO locations (name, address, latitude, longitude, region, city, postal_code, notes, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `INSERT INTO locations (name, address, latitude, longitude, region, city, postal_code, cluster, class_type, notes, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING *`,
-            [name.trim(), address, latitude, longitude, region, city, postal_code, notes, req.user.id]
+            [name.trim(), address, latitude, longitude, region, city, postal_code, cluster, class_type, notes, req.user.id]
         );
 
         res.status(201).json({
@@ -177,7 +177,7 @@ router.post('/', authenticateToken, [
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, address, latitude, longitude, region, city, postal_code, notes } = req.body;
+        const { name, address, latitude, longitude, region, city, postal_code, cluster, class_type, notes } = req.body;
 
         const result = await pool.query(
             `UPDATE locations SET 
@@ -188,11 +188,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 region = COALESCE($5, region),
                 city = COALESCE($6, city),
                 postal_code = COALESCE($7, postal_code),
-                notes = COALESCE($8, notes),
+                cluster = COALESCE($8, cluster),
+                class_type = COALESCE($9, class_type),
+                notes = COALESCE($10, notes),
                 updated_at = NOW()
-             WHERE id = $9
+             WHERE id = $11
              RETURNING *`,
-            [name, address, latitude, longitude, region, city, postal_code, notes, id]
+            [name, address, latitude, longitude, region, city, postal_code, cluster, class_type, notes, id]
         );
 
         if (result.rows.length === 0) {

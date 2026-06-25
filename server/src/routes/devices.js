@@ -171,10 +171,65 @@ router.post('/', authenticateToken, [
         }
 
         const {
-            name, device_type, serial_number, brand_id, model_id,
-            room_id, location_id, status, capacity, year_operations,
+            name, device_name, // fallback for device_name
+            device_type, serial_number,
+            brand_id, brand_name,
+            model_id, model_name,
+            room_id, room_name,
+            location_id, location_name, // add location_name for lookup
+            status, capacity, kapasitas, // fallback for kapasitas
+            year_operations, year, // fallback for year
             notes, latitude, longitude
         } = req.body;
+
+        const actualName = name || device_name;
+        const actualCapacity = capacity || kapasitas;
+        const actualYear = year_operations || year;
+
+        // Auto-resolve brand: terima teks atau ID
+        let resolvedBrandId = brand_id;
+        if (!resolvedBrandId && brand_name) {
+            const brandResult = await pool.query(
+                'INSERT INTO brands (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id',
+                [brand_name.trim().toUpperCase()]
+            );
+            resolvedBrandId = brandResult.rows[0].id;
+        }
+
+        // Auto-resolve model: terima teks atau ID
+        let resolvedModelId = model_id;
+        if (!resolvedModelId && model_name) {
+            const modelResult = await pool.query(
+                'INSERT INTO models (name, brand_id) VALUES ($1, $2) ON CONFLICT (name, brand_id) DO UPDATE SET name = EXCLUDED.name RETURNING id',
+                [model_name.trim().toUpperCase(), resolvedBrandId]
+            );
+            resolvedModelId = modelResult.rows[0].id;
+        }
+
+        // Auto-resolve room: terima teks atau ID
+        let resolvedRoomId = room_id;
+        if (!resolvedRoomId && room_name) {
+            const roomResult = await pool.query(
+                'INSERT INTO rooms (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id',
+                [room_name.trim().toUpperCase()]
+            );
+            resolvedRoomId = roomResult.rows[0].id;
+        }
+
+        // Lookup location_id by location_name
+        let resolvedLocationId = location_id;
+        if (!resolvedLocationId && location_name) {
+            const locResult = await pool.query(
+                'SELECT id FROM locations WHERE name = $1',
+                [location_name.trim().toUpperCase()]
+            );
+            if (locResult.rows.length > 0) {
+                resolvedLocationId = locResult.rows[0].id;
+            } else {
+                // Return error if location doesn't exist
+                return res.status(400).json({ message: `Location ${location_name} not found in database. Please ensure it is created as an STO first.` });
+            }
+        }
 
         const result = await pool.query(
             `INSERT INTO devices (name, device_type, serial_number, brand_id, model_id, 
@@ -182,14 +237,26 @@ router.post('/', authenticateToken, [
                                   notes, latitude, longitude, created_by)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              RETURNING *`,
-            [name, device_type, serial_number, brand_id, model_id,
-                room_id, location_id, status || 'operational', capacity,
-                year_operations, notes, latitude, longitude, req.user.id]
+            [actualName, device_type, serial_number, resolvedBrandId, resolvedModelId,
+                resolvedRoomId, resolvedLocationId, status || 'operational', actualCapacity,
+                actualYear, notes, latitude, longitude, req.user.id]
+        );
+
+        // Get full device data with joined tables
+        const fullDevice = await pool.query(
+            `SELECT d.*, b.name as brand_name, m.name as model_name, r.name as room_name, l.name as location_name
+             FROM devices d
+             LEFT JOIN brands b ON d.brand_id = b.id
+             LEFT JOIN models m ON d.model_id = m.id
+             LEFT JOIN rooms r ON d.room_id = r.id
+             LEFT JOIN locations l ON d.location_id = l.id
+             WHERE d.id = $1`,
+            [result.rows[0].id]
         );
 
         res.status(201).json({
             message: 'Device created successfully',
-            device: result.rows[0]
+            device: fullDevice.rows[0]
         });
     } catch (error) {
         console.error('Create device error:', error);
@@ -202,10 +269,62 @@ router.put('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const {
-            name, device_type, serial_number, brand_id, model_id,
-            room_id, location_id, status, capacity, year_operations,
+            name, device_name,
+            device_type, serial_number, 
+            brand_id, brand_name,
+            model_id, model_name,
+            room_id, room_name, 
+            location_id, location_name,
+            status, capacity, kapasitas, 
+            year_operations, year,
             notes, latitude, longitude
         } = req.body;
+
+        const actualName = name || device_name;
+        const actualCapacity = capacity || kapasitas;
+        const actualYear = year_operations || year;
+
+        // Auto-resolve brand
+        let resolvedBrandId = brand_id;
+        if (!resolvedBrandId && brand_name) {
+            const brandResult = await pool.query(
+                'INSERT INTO brands (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id',
+                [brand_name.trim().toUpperCase()]
+            );
+            resolvedBrandId = brandResult.rows[0].id;
+        }
+
+        // Auto-resolve model
+        let resolvedModelId = model_id;
+        if (!resolvedModelId && model_name) {
+            const modelResult = await pool.query(
+                'INSERT INTO models (name, brand_id) VALUES ($1, $2) ON CONFLICT (name, brand_id) DO UPDATE SET name = EXCLUDED.name RETURNING id',
+                [model_name.trim().toUpperCase(), resolvedBrandId || null]
+            );
+            resolvedModelId = modelResult.rows[0].id;
+        }
+
+        // Auto-resolve room
+        let resolvedRoomId = room_id;
+        if (!resolvedRoomId && room_name) {
+            const roomResult = await pool.query(
+                'INSERT INTO rooms (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id',
+                [room_name.trim().toUpperCase()]
+            );
+            resolvedRoomId = roomResult.rows[0].id;
+        }
+
+        // Auto-resolve location
+        let resolvedLocationId = location_id;
+        if (!resolvedLocationId && location_name) {
+            const locResult = await pool.query(
+                'SELECT id FROM locations WHERE name = $1',
+                [location_name.trim().toUpperCase()]
+            );
+            if (locResult.rows.length > 0) {
+                resolvedLocationId = locResult.rows[0].id;
+            }
+        }
 
         const result = await pool.query(
             `UPDATE devices SET 
@@ -225,8 +344,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 updated_at = NOW()
              WHERE id = $14
              RETURNING *`,
-            [name, device_type, serial_number, brand_id, model_id,
-                room_id, location_id, status, capacity, year_operations,
+            [actualName, device_type, serial_number, resolvedBrandId, resolvedModelId,
+                resolvedRoomId, resolvedLocationId, status, actualCapacity, actualYear,
                 notes, latitude, longitude, id]
         );
 

@@ -14,11 +14,18 @@ import {
     ChevronDown,
     ArrowRight,
     Link2,
-    Link2Off
+    Link2Off,
+    Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BottomSheet from '../BottomSheet';
 import { REGIONAL_HIERARCHY, getCombinedHierarchy, triggerLocationsUpdate, loadCustomLocations as loadCustomLocsFromUtils } from '../../utils/hierarchy';
+
+// Import hierarchy API for backend sync
+import { hierarchyAPI } from '../../services/api';
+
+// Flag untuk menggunakan API atau localStorage
+const USE_API = import.meta.env.VITE_USE_API === 'true' || false;
 
 const STORAGE_KEY = 'map_inventory_locations';
 
@@ -82,6 +89,35 @@ export default function LocationManager({ isOpen, onClose }) {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Load data from API when USE_API is enabled
+    const refreshData = useCallback(async () => {
+        if (USE_API) {
+            try {
+                setIsLoading(true);
+                const response = await hierarchyAPI.getAll();
+                if (response.data) {
+                    const data = response.data;
+                    const apiData = {
+                        regionals: data.regionals?.map(r => r.name) || [],
+                        districts: data.districts?.map(d => d.name) || [],
+                        clusters: data.clusters?.map(c => c.name) || [],
+                        stos: data.stos?.map(s => s.name) || [],
+                        _raw: data // Keep raw data for hierarchy info
+                    };
+                    setCustomData(apiData);
+                    // Also update localStorage as backup
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(apiData));
+                }
+            } catch (e) {
+                console.error('Failed to load from API, using localStorage', e);
+                setCustomData(loadCustomLocations());
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    }, []);
 
     // Mode selection: 'hierarchy' (based on existing) or 'standalone' (create new without correlation)
     const [addMode, setAddMode] = useState('hierarchy');
@@ -112,52 +148,32 @@ export default function LocationManager({ isOpen, onClose }) {
 
     // Regional options - include custom regionals
     const regionalOptions = useMemo(() => {
-        const fromHierarchy = Object.keys(FULL_HIERARCHY);
-        const customRegs = allCustomData?.regionals || [];
-        return [...new Set([...fromHierarchy, ...customRegs])];
-    }, [FULL_HIERARCHY, allCustomData]);
+        return Object.keys(FULL_HIERARCHY);
+    }, [FULL_HIERARCHY]);
 
     // District options - include custom districts from the selected regional
     const districtOptions = useMemo(() => {
         if (!stoFormData.regional) return [];
-        const fromHierarchy = Object.keys(FULL_HIERARCHY[stoFormData.regional] || {});
-        // Get custom districts that belong to this regional
-        const customDists = Object.entries(allCustomData?.districtHierarchy || {})
-            .filter(([_, info]) => info?.regional === stoFormData.regional)
-            .map(([name]) => name);
-        return [...new Set([...fromHierarchy, ...customDists])];
-    }, [stoFormData.regional, FULL_HIERARCHY, allCustomData]);
+        return Object.keys(FULL_HIERARCHY[stoFormData.regional] || {});
+    }, [stoFormData.regional, FULL_HIERARCHY]);
 
     // Cluster options - include custom clusters from the selected regional and district
     const clusterOptions = useMemo(() => {
         if (!stoFormData.regional || !stoFormData.district) return [];
-        const fromHierarchy = Object.keys(FULL_HIERARCHY[stoFormData.regional]?.[stoFormData.district] || {});
-        // Get custom clusters that belong to this regional and district
-        const customClusters = Object.entries(allCustomData?.clusterHierarchy || {})
-            .filter(([_, info]) => info?.regional === stoFormData.regional && info?.district === stoFormData.district)
-            .map(([name]) => name);
-        return [...new Set([...fromHierarchy, ...customClusters])];
-    }, [stoFormData.regional, stoFormData.district, FULL_HIERARCHY, allCustomData]);
+        return Object.keys(FULL_HIERARCHY[stoFormData.regional]?.[stoFormData.district] || {});
+    }, [stoFormData.regional, stoFormData.district, FULL_HIERARCHY]);
 
     // District hierarchy options (for adding new district)
     const districtHierarchyOptions = useMemo(() => {
         if (!districtFormData.regional) return [];
-        const fromHierarchy = Object.keys(FULL_HIERARCHY[districtFormData.regional] || {});
-        const customDists = Object.entries(allCustomData?.districtHierarchy || {})
-            .filter(([_, info]) => info?.regional === districtFormData.regional)
-            .map(([name]) => name);
-        return [...new Set([...fromHierarchy, ...customDists])];
-    }, [districtFormData.regional, FULL_HIERARCHY, allCustomData]);
+        return Object.keys(FULL_HIERARCHY[districtFormData.regional] || {});
+    }, [districtFormData.regional, FULL_HIERARCHY]);
 
     // Cluster hierarchy options (for adding new cluster)
     const clusterDistrictOptions = useMemo(() => {
         if (!clusterFormData.regional) return [];
-        const fromHierarchy = Object.keys(FULL_HIERARCHY[clusterFormData.regional] || {});
-        const customDists = Object.entries(allCustomData?.districtHierarchy || {})
-            .filter(([_, info]) => info?.regional === clusterFormData.regional)
-            .map(([name]) => name);
-        return [...new Set([...fromHierarchy, ...customDists])];
-    }, [clusterFormData.regional, FULL_HIERARCHY, allCustomData]);
+        return Object.keys(FULL_HIERARCHY[clusterFormData.regional] || {});
+    }, [clusterFormData.regional, FULL_HIERARCHY]);
 
     // Reset cascading form when tab changes
     useEffect(() => {
@@ -349,13 +365,15 @@ export default function LocationManager({ isOpen, onClose }) {
     const defaultItems = DEFAULT_HIERARCHY[activeTab];
 
     // Handle add standalone (no hierarchy correlation)
-    const handleAddStandalone = () => {
+    const handleAddStandalone = async () => {
         if (!newItem.trim()) {
             toast.error('Nama tidak boleh kosong');
             return;
         }
 
         const normalized = newItem.trim().toUpperCase();
+        const tabLabel = TABS.find(t => t.id === activeTab).label;
+        const apiType = activeTab === 'regionals' ? 'regional' : activeTab === 'districts' ? 'district' : activeTab === 'clusters' ? 'cluster' : 'sto';
 
         // Check for duplicates
         if (allLocations[activeTab].some(item => item.toUpperCase() === normalized)) {
@@ -363,6 +381,24 @@ export default function LocationManager({ isOpen, onClose }) {
             return;
         }
 
+        // Try to save to API if USE_API is enabled
+        if (USE_API) {
+            try {
+                setIsLoading(true);
+                await hierarchyAPI.create({
+                    type: apiType,
+                    name: normalized
+                });
+                toast.success(`${tabLabel} "${normalized}" berhasil ditambahkan ke server`);
+            } catch (e) {
+                // If API fails, save to localStorage as fallback
+                console.error('API save failed, using localStorage fallback', e);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        // Save to localStorage (always as backup)
         const updated = {
             ...customData,
             [activeTab]: [...customData[activeTab], normalized]
@@ -372,7 +408,10 @@ export default function LocationManager({ isOpen, onClose }) {
         saveCustomLocations(updated);
         setNewItem('');
         setShowAddForm(false);
-        toast.success(`${TABS.find(t => t.id === activeTab).label} "${normalized}" berhasil ditambahkan (standalone)`);
+
+        if (!USE_API) {
+            toast.success(`${tabLabel} "${normalized}" berhasil ditambahkan (standalone)`);
+        }
     };
 
     const handleEdit = (item) => {
@@ -407,18 +446,48 @@ export default function LocationManager({ isOpen, onClose }) {
             )
         };
 
+        // Update hierarchy keys if renamed
+        if (activeTab === 'districts' && updated.districtHierarchy && updated.districtHierarchy[oldItem]) {
+            updated.districtHierarchy[normalized] = updated.districtHierarchy[oldItem];
+            delete updated.districtHierarchy[oldItem];
+        } else if (activeTab === 'clusters' && updated.clusterHierarchy && updated.clusterHierarchy[oldItem]) {
+            updated.clusterHierarchy[normalized] = updated.clusterHierarchy[oldItem];
+            delete updated.clusterHierarchy[oldItem];
+        } else if (activeTab === 'stos' && updated.stoHierarchy && updated.stoHierarchy[oldItem]) {
+            updated.stoHierarchy[normalized] = updated.stoHierarchy[oldItem];
+            delete updated.stoHierarchy[oldItem];
+        }
+
         setCustomData(updated);
         saveCustomLocations(updated);
+        setRefreshKey(k => k + 1);
         setEditingId(null);
         setEditValue('');
         toast.success('Berhasil diupdate');
     };
 
-    const handleDelete = (item) => {
+    const handleDelete = async (item) => {
         // Check if it's a default item
         if (defaultItems.includes(item)) {
             toast.error('Item default tidak bisa dihapus');
             return;
+        }
+
+        const tabLabel = TABS.find(t => t.id === activeTab).label;
+        const apiType = activeTab === 'regionals' ? 'regional' : activeTab === 'districts' ? 'district' : activeTab === 'clusters' ? 'cluster' : 'sto';
+
+        // Try to delete from API if USE_API is enabled
+        if (USE_API) {
+            try {
+                setIsLoading(true);
+                await hierarchyAPI.delete(item);
+                toast.success(`${tabLabel} "${item}" berhasil dihapus dari server`);
+            } catch (e) {
+                // If API fails, still delete from localStorage
+                console.error('API delete failed, still removing from localStorage', e);
+            } finally {
+                setIsLoading(false);
+            }
         }
 
         const updated = {
@@ -426,10 +495,23 @@ export default function LocationManager({ isOpen, onClose }) {
             [activeTab]: customData[activeTab].filter(i => i !== item)
         };
 
+        // Remove from hierarchy data
+        if (activeTab === 'districts' && updated.districtHierarchy) {
+            delete updated.districtHierarchy[item];
+        } else if (activeTab === 'clusters' && updated.clusterHierarchy) {
+            delete updated.clusterHierarchy[item];
+        } else if (activeTab === 'stos' && updated.stoHierarchy) {
+            delete updated.stoHierarchy[item];
+        }
+
         setCustomData(updated);
         saveCustomLocations(updated);
+        setRefreshKey(k => k + 1);
         setDeleteConfirm(null);
-        toast.success('Berhasil dihapus');
+
+        if (!USE_API) {
+            toast.success('Berhasil dihapus');
+        }
     };
 
     const cancelEdit = () => {

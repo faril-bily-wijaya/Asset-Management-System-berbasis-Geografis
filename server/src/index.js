@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const devicesRoutes = require('./routes/devices');
 const mastersRoutes = require('./routes/masters');
 const locationsRoutes = require('./routes/locations');
+const hierarchyRoutes = require('./routes/hierarchy');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/devices', devicesRoutes);
 app.use('/api/masters', mastersRoutes);
 app.use('/api/locations', locationsRoutes);
+app.use('/api/locations/hierarchy', hierarchyRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

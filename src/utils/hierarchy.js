@@ -53,6 +53,9 @@ export const REGIONAL_HIERARCHY = {
 // Storage key for custom locations
 const LOCATIONS_STORAGE_KEY = 'map_inventory_locations';
 
+// Flag to use API or localStorage
+const USE_API = import.meta.env.VITE_USE_API === 'true' || false;
+
 export const triggerLocationsUpdate = () => {
   window.dispatchEvent(new Event('locations_updated'));
 };
@@ -94,13 +97,94 @@ export function loadCustomLocations() {
   return { regionals: [], districts: [], clusters: [], stos: [] };
 }
 
+// Load custom locations from API (async version)
+export async function loadCustomLocationsFromAPI() {
+  try {
+    // Dynamic import to avoid circular dependency
+    const { hierarchyAPI } = await import('../services/api');
+    const response = await hierarchyAPI.getAll();
+
+    if (response.data) {
+      // Transform API response to match localStorage format
+      const data = response.data;
+      return {
+        regionals: data.regionals?.map(r => r.name) || [],
+        districts: data.districts?.map(d => d.name) || [],
+        clusters: data.clusters?.map(c => c.name) || [],
+        stos: data.stos?.map(s => s.name) || [],
+        // Also include hierarchy info for proper tree building
+        _hierarchy: data.hierarchy || {},
+        _raw: data // Keep raw data for advanced usage
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load custom locations from API, falling back to localStorage', e);
+    return loadCustomLocations();
+  }
+  return { regionals: [], districts: [], clusters: [], stos: [] };
+}
+
+// Get combined hierarchy (supports both API and localStorage)
+export async function getCombinedHierarchyAsync() {
+  const combined = JSON.parse(JSON.stringify(REGIONAL_HIERARCHY));
+
+  // Load custom from API if USE_API is true
+  const custom = USE_API ? await loadCustomLocationsFromAPI() : loadCustomLocations();
+
+  // Add standalone districts
+  if (custom.regionals) {
+    custom.regionals.forEach(r => {
+      if (!combined[r]) combined[r] = {};
+    });
+  }
+
+  if (custom.districts) {
+    custom.districts.forEach(d => {
+      const reg = custom.districtHierarchy?.[d]?.regional || custom._hierarchy?.[d]?.regional || "REGIONAL SUMBAGSEL";
+      if (!combined[reg]) combined[reg] = {};
+      if (!combined[reg][d]) combined[reg][d] = {};
+    });
+  }
+
+  // Add clusters
+  if (custom.clusters) {
+    custom.clusters.forEach(c => {
+      const h = custom.clusterHierarchy?.[c] || custom._hierarchy?.[c] || {};
+      const reg = h.regional || "REGIONAL SUMBAGSEL";
+      const dist = h.district || "UNKNOWN_DISTRICT";
+      if (!combined[reg]) combined[reg] = {};
+      if (!combined[reg][dist]) combined[reg][dist] = {};
+      if (!combined[reg][dist][c]) combined[reg][dist][c] = [];
+    });
+  }
+
+  // Add STOs
+  if (custom.stos) {
+    custom.stos.forEach(sto => {
+      const h = custom.stoHierarchy?.[sto] || custom._hierarchy?.[sto] || {};
+      const reg = h.regional || "REGIONAL SUMBAGSEL";
+      const dist = h.district || "UNKNOWN_DISTRICT";
+      const clust = h.cluster || "UNKNOWN_CLUSTER";
+
+      if (!combined[reg]) combined[reg] = {};
+      if (!combined[reg][dist]) combined[reg][dist] = {};
+      if (!combined[reg][dist][clust]) combined[reg][dist][clust] = [];
+      if (!combined[reg][dist][clust].includes(sto)) {
+        combined[reg][dist][clust].push(sto);
+      }
+    });
+  }
+
+  return combined;
+}
+
 // Get combined hierarchy (Static + Custom from localStorage)
 export function getCombinedHierarchy() {
   // Deep clone static hierarchy
   const combined = JSON.parse(JSON.stringify(REGIONAL_HIERARCHY));
-  
+
   const custom = loadCustomLocations();
-  
+
   // Add standalone districts
   if (custom.districts) {
     custom.districts.forEach(d => {
@@ -129,7 +213,7 @@ export function getCombinedHierarchy() {
       const reg = h.regional || "REGIONAL SUMBAGSEL";
       const dist = h.district || "UNKNOWN_DISTRICT";
       const clust = h.cluster || "UNKNOWN_CLUSTER";
-      
+
       if (!combined[reg]) combined[reg] = {};
       if (!combined[reg][dist]) combined[reg][dist] = {};
       if (!combined[reg][dist][clust]) combined[reg][dist][clust] = [];
@@ -253,7 +337,7 @@ export function getDistrictListLegacy() {
 }
 
 // Kita biarkan konstanta dummy untuk mencegah error import destructuring di file lama
-export const DISTRICT_LIST = []; 
+export const DISTRICT_LIST = [];
 
 export function getClustersByDistrictLegacy(districtsArray) {
   let allClusters = [];

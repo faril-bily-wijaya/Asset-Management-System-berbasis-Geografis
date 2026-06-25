@@ -122,6 +122,25 @@ CREATE INDEX IF NOT EXISTS idx_devices_room ON devices(room_id);
 CREATE INDEX IF NOT EXISTS idx_devices_status ON devices(status);
 CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(device_type);
 CREATE INDEX IF NOT EXISTS idx_locations_region ON locations(region);
+
+-- Custom hierarchy table for standalone regionals/districts/clusters/stos
+CREATE TABLE IF NOT EXISTS custom_hierarchy (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('regional', 'district', 'cluster', 'sto')),
+    name VARCHAR(200) NOT NULL,
+    parent_regional VARCHAR(200),
+    parent_district VARCHAR(200),
+    parent_cluster VARCHAR(200),
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(type, name)
+);
+
+-- Create indexes for custom_hierarchy
+CREATE INDEX IF NOT EXISTS idx_custom_hierarchy_type ON custom_hierarchy(type);
+CREATE INDEX IF NOT EXISTS idx_custom_hierarchy_regional ON custom_hierarchy(parent_regional);
+CREATE INDEX IF NOT EXISTS idx_custom_hierarchy_district ON custom_hierarchy(parent_district);
 `;
 
 async function setupDatabase() {

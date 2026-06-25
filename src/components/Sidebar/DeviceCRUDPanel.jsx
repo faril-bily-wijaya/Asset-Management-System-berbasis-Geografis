@@ -13,7 +13,8 @@ import {
     Upload as UploadIcon,
     MapPin,
     Layers,
-    FileSpreadsheet
+    FileSpreadsheet,
+    Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getAllLocations, getAreaForLocation, getDistrictForLocation, getClusterForLocation, useDynamicHierarchy } from '../../utils/hierarchy';
@@ -24,10 +25,16 @@ import FuzzySuggest from '../FuzzySuggest';
 import UploadCSVModal from '../UploadCSVModal';
 import DeviceNamePreview from '../DeviceNamePreview';
 
+// Import devices API for backend sync
+import { devicesAPI } from '../../services/api';
+
 const STORAGE_KEY = 'map_inventory_custom_devices';
 const BRANDS_KEY = 'map_inventory_brands';
 const MODELS_KEY = 'map_inventory_models';
 const ROOMS_KEY = 'map_inventory_rooms';
+
+// Flag untuk menggunakan API atau localStorage
+const USE_API = import.meta.env.VITE_USE_API === 'true' || false;
 
 // Field definitions for device form
 const DEVICE_FIELDS = [
@@ -171,7 +178,7 @@ export default function DeviceCRUDPanel({ isOpen, onClose, onDeviceAdded }) {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!formData.LOCATION || !formData.DEVICE_TYPE || !formData.DEVICE_NAME) {
@@ -225,6 +232,35 @@ export default function DeviceCRUDPanel({ isOpen, onClose, onDeviceAdded }) {
         }
 
         saveDevices(newDevices);
+
+        // Sync to API if USE_API is enabled
+        if (USE_API) {
+            try {
+                // Transform data for API (using brand_name, model_name, room_name for auto-resolve)
+                const apiData = {
+                    location_name: formData.LOCATION,
+                    device_type: formData.DEVICE_TYPE,
+                    device_name: formData.DEVICE_NAME,
+                    brand_name: formData.MERK || null,
+                    model_name: formData.MODEL || null,
+                    serial_number: formData.SERIAL_NUMBER || null,
+                    kapasitas: formData.KAPASITAS || null,
+                    year: formData.YEAR || null,
+                    room_name: formData.ROOM || null,
+                    status: formData.STATUS,
+                };
+
+                if (editingId) {
+                    await devicesAPI.update(editingId, apiData);
+                } else {
+                    await devicesAPI.create(apiData);
+                }
+            } catch (e) {
+                console.error('Failed to sync to API', e);
+                // Still keep local data even if API fails
+            }
+        }
+
         setShowForm(false);
         setEditingId(null);
         setFormData(emptyDevice);
@@ -240,7 +276,16 @@ export default function DeviceCRUDPanel({ isOpen, onClose, onDeviceAdded }) {
         setShowForm(true);
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
+        // Sync to API if USE_API is enabled
+        if (USE_API) {
+            try {
+                await devicesAPI.delete(id);
+            } catch (e) {
+                console.error('Failed to delete from API', e);
+            }
+        }
+
         const newDevices = devices.filter(d => d.id !== id);
         saveDevices(newDevices);
         setShowDeleteConfirm(null);
