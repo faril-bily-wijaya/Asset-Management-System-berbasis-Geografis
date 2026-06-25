@@ -28,6 +28,9 @@ app.use(express.urlencoded({ extended: true }));
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Serve Frontend Static Files
+app.use(express.static(path.join(__dirname, '../../dist')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/devices', devicesRoutes);
@@ -49,9 +52,9 @@ app.use((err, req, res, next) => {
     });
 });
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({ message: 'Route not found' });
+// Catch-all route to serve the React app for any other requests
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../dist/index.html'));
 });
 
 app.listen(PORT, () => {
