@@ -56,7 +56,7 @@ const saveCustomLocations = (data) => {
 };
 
 // Get all locations (default + custom) - exported for other components
-export const getAllLocations = () => {
+const getAllLocations = () => {
     const custom = loadCustomLocations();
     return {
         regionals: [...new Set([...DEFAULT_HIERARCHY.regionals, ...(custom.regionals || [])])],
