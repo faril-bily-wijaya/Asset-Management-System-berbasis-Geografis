@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     X,
     Plus,
@@ -18,117 +18,51 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BottomSheet from '../BottomSheet';
+import { REGIONAL_HIERARCHY, getCombinedHierarchy, triggerLocationsUpdate, loadCustomLocations as loadCustomLocsFromUtils } from '../../utils/hierarchy';
 
 const STORAGE_KEY = 'map_inventory_locations';
 
-// Full hierarchy structure for cascading dropdowns
-const FULL_HIERARCHY = {
-    "REGIONAL SUMBAGSEL": {
-        "JAMBI": {
-            "CLUSTER JAMBI": [
-                "BANGKO", "JAMBI", "KOTA BARU", "KUALA TUNGKAL", "MANDALO",
-                "MDF MUARA RUPIT", "MDF TELANAI PURA", "MUARA BULIAN", "MUARA BUNGO",
-                "MUARA TEBO", "PANKALAN BULIAN", "PASIR PUTIH", "RIMBO BUJANG",
-                "SAROLANGUN JAMBI", "SINGKUT", "SUNGAI PENUH", "TEBINGTINGGI JAMBI"
-            ]
-        },
-        "PANGKAL PINANG": {
-            "CLUSTER PANGKAL PINANG": [
-                "BELINYU", "JEBUS", "KELAPA", "KOBA", "MANGGAR", "MDF TEMPILANG",
-                "MUNTOK", "PANGKAL PINANG", "SUNGAI LIAT", "TANJUNG PANDAN", "TOBOALI"
-            ]
-        },
-        "PALEMBANG": {
-            "CLUSTER PALEMBANG": [
-                "BABAT TOMAN", "BATURAJA", "BELITANG", "BETUNG", "BUKIT SIGUNTANG",
-                "INDRALAYA", "KAYU AGUNG", "KENTEN UJUNG", "MARTAPURA",
-                "MDF U/ DLC PANGKALAN BALAI", "MUARADUA", "MUARA ENIM", "PALEMBANG CENTRUM",
-                "PENDOPO TALANG UBI", "PLAJU", "PRABUMULIH", "SEBERANG ULU", "SEKAYU",
-                "SERONG", "SUNGAI BUAH", "SUNGAI LILIN", "TALANG KELAPA", "TANJUNG BATU",
-                "TANJUNG ENIM", "TANJUNG RAJA", "TUGUMULYO OKI", "UNIT"
-            ]
-        },
-        "LAMPUNG": {
-            "CLUSTER LAMPUNG": [
-                "BANDAR JAYA", "BLAMBANGAN UMPU", "BUKIT KEMUNING", "FAJAR BULAN",
-                "GEDONG TATAAN", "KALIANDA", "KALIREJO", "KEDATON", "KOTA AGUNG",
-                "KOTABUMI", "KRUI", "LABUAN MARINGGAI", "LANGKAPURA", "LIWA", "MENGGALA",
-                "METRO", "NATAR", "PANJANG", "PESUT", "PRINGSEWU", "SIGING", "SIMPANG PALAS",
-                "SRIBAWONO", "SUKADANA", "TALANG PADANG", "TANJUNG KARANG", "TELUK BETUNG",
-                "WAY JEPARA", "CRP", "FBL", "PST", "SGX"
-            ]
-        },
-        "BENGKULU": {
-            "CLUSTER BENGKULU": [
-                "ARGA MAKMUR", "BINTUHAN", "IPUH", "KETAHUN", "MANNA", "MDF BENGKULU CENTRUM",
-                "MDF CURUP", "MDF KEPAHIANG", "MDF MUARA AMAN", "MDF PAGAR DEWA", "MUKO-MUKO", "TAIS"
-            ],
-            "CLUSTER LUBUK LINGGAU": [
-                "LAHAT", "LUBUKLINGGAU", "PAGAR ALAM", "PENDOPO LINTANG", "SIMPANG PERIUK",
-                "TEBINGTINGGI SUMSEL", "TUGUMULYO MUSI RAWAS"
-            ]
+// Default hierarchy structure derived from REGIONAL_HIERARCHY
+const buildDefaultHierarchy = () => {
+    const defaultData = {
+        regionals: Object.keys(REGIONAL_HIERARCHY),
+        districts: [],
+        clusters: [],
+        stos: []
+    };
+    for (const reg of defaultData.regionals) {
+        const dists = Object.keys(REGIONAL_HIERARCHY[reg] || {});
+        defaultData.districts.push(...dists);
+        for (const dist of dists) {
+            const clusts = Object.keys(REGIONAL_HIERARCHY[reg][dist] || {});
+            defaultData.clusters.push(...clusts);
+            for (const clust of clusts) {
+                defaultData.stos.push(...(REGIONAL_HIERARCHY[reg][dist][clust] || []));
+            }
         }
     }
+    return defaultData;
 };
 
-// Default hierarchy structure
-const DEFAULT_HIERARCHY = {
-    regionals: ['REGIONAL SUMBAGSEL'],
-    districts: ['JAMBI', 'PALEMBANG', 'LAMPUNG', 'BENGKULU', 'PANGKAL PINANG'],
-    clusters: [
-        'CLUSTER JAMBI', 'CLUSTER PALEMBANG', 'CLUSTER LAMPUNG',
-        'CLUSTER BENGKULU', 'CLUSTER LUBUK LINGGAU', 'CLUSTER PANGKAL PINANG'
-    ],
-    stos: [
-        'ARGA MAKMUR', 'BABAT TOMAN', 'BANDAR JAYA', 'BANGKO', 'BATURAJA',
-        'BELINYU', 'BELITANG', 'BETUNG', 'BINTUHAN', 'BLAMBANGAN UMPU',
-        'BUKIT KEMUNING', 'BUKIT SIGUNTANG', 'GEDONG TATAAN', 'INDRALAYA',
-        'IPUH', 'JAMBI', 'JEBUS', 'KALIANDA', 'KALIREJO', 'KAYU AGUNG',
-        'KEDATON', 'KENTEN UJUNG', 'KETAHUN', 'KOBA', 'KOTA BARU',
-        'KOTA AGUNG', 'KRUI', 'KUALA TUNGKAL', 'LABUAN MARINGGAI',
-        'LAHAT', 'LIWA', 'LUBUKLINGGAU', 'MUARA BUNGO', 'MUARA BULIAN',
-        'MANDALO', 'MUARA ENIM', 'METRO', 'MENGGALA', 'MANGGAR',
-        'MUKO-MUKO', 'MANNA', 'MARTAPURA', 'MUARA TEBO', 'MUNTOK',
-        'MUARADUA', 'NATAR', 'PRABUMULIH', 'PAGAR ALAM', 'PALEMBANG CENTRUM',
-        'PANGKAL PINANG', 'PANJANG', 'PANKALAN BULIAN', 'PLAJU',
-        'PRINGSEWU', 'RIMBO BUJANG', 'SEBERANG ULU', 'SUNGAI BUAH',
-        'SINGKUT', 'SUKADANA', 'SEKAYU', 'SUNGAI LILIN', 'SUNGAI LIAT',
-        'SUNGAI PENUH', 'SIMPANG PERIUK', 'SIMPANG PALAS', 'SAROLANGUN JAMBI',
-        'SERONG', 'SRIBAWONO', 'TANJUNG BATU', 'TANJUNG ENIM', 'TOBOALI',
-        'TANJUNG KARANG', 'TANJUNG PANDAN', 'TELUK BETUNG', 'TANJUNG RAJA',
-        'TEBINGTINGGI SUMSEL', 'TEBINGTINGGI JAMBI', 'KOTABUMI', 'WAY JEPARA',
-        'UNIT', 'TUGUMULYO OKI', 'TUGUMULYO MUSI RAWAS', 'TALANG PADANG',
-        'TAIS', 'TALANG KELAPA', 'FAJAR BULAN', 'PESUT', 'SIGING', 'KELAPA',
-        'KAP', 'CRP', 'PST', 'SGX', 'FBL'
-    ]
-};
+const DEFAULT_HIERARCHY = buildDefaultHierarchy();
 
-// Load custom locations from localStorage
-const loadCustomLocations = () => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            return JSON.parse(stored);
-        }
-    } catch (e) {
-        console.error('Failed to load custom locations', e);
-    }
-    return { regionals: [], districts: [], clusters: [], stos: [] };
-};
+// Re-export loadCustomLocations from hierarchy utils
+const loadCustomLocations = loadCustomLocsFromUtils;
 
 // Save custom locations to localStorage
 const saveCustomLocations = (data) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    triggerLocationsUpdate();
 };
 
-// Get all locations (default + custom)
-const getAllLocations = () => {
+// Get all locations (default + custom) - exported for other components
+export const getAllLocations = () => {
     const custom = loadCustomLocations();
     return {
-        regionals: [...DEFAULT_HIERARCHY.regionals, ...custom.regionals],
-        districts: [...DEFAULT_HIERARCHY.districts, ...custom.districts],
-        clusters: [...DEFAULT_HIERARCHY.clusters, ...custom.clusters],
-        stos: [...DEFAULT_HIERARCHY.stos, ...custom.stos]
+        regionals: [...new Set([...DEFAULT_HIERARCHY.regionals, ...(custom.regionals || [])])],
+        districts: [...new Set([...DEFAULT_HIERARCHY.districts, ...(custom.districts || [])])],
+        clusters: [...new Set([...DEFAULT_HIERARCHY.clusters, ...(custom.clusters || [])])],
+        stos: [...new Set([...DEFAULT_HIERARCHY.stos, ...(custom.stos || [])])]
     };
 };
 
@@ -147,6 +81,7 @@ export default function LocationManager({ isOpen, onClose }) {
     const [editValue, setEditValue] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // Mode selection: 'hierarchy' (based on existing) or 'standalone' (create new without correlation)
     const [addMode, setAddMode] = useState('hierarchy');
@@ -171,24 +106,58 @@ export default function LocationManager({ isOpen, onClose }) {
         clusterName: ''
     });
 
-    // Computed options for cascading dropdowns
-    const regionalOptions = Object.keys(FULL_HIERARCHY);
-    const districtOptions = stoFormData.regional
-        ? Object.keys(FULL_HIERARCHY[stoFormData.regional] || {})
-        : [];
-    const clusterOptions = stoFormData.regional && stoFormData.district
-        ? Object.keys(FULL_HIERARCHY[stoFormData.regional]?.[stoFormData.district] || {})
-        : [];
+    // Computed options for cascading dropdowns - useMemo ensures reactivity to customData
+    const FULL_HIERARCHY = useMemo(() => getCombinedHierarchy(), [refreshKey]);
+    const allCustomData = useMemo(() => loadCustomLocations(), [refreshKey, customData]);
 
-    // District hierarchy options
-    const districtHierarchyOptions = districtFormData.regional
-        ? Object.keys(FULL_HIERARCHY[districtFormData.regional] || {})
-        : [];
+    // Regional options - include custom regionals
+    const regionalOptions = useMemo(() => {
+        const fromHierarchy = Object.keys(FULL_HIERARCHY);
+        const customRegs = allCustomData?.regionals || [];
+        return [...new Set([...fromHierarchy, ...customRegs])];
+    }, [FULL_HIERARCHY, allCustomData]);
 
-    // Cluster hierarchy options
-    const clusterDistrictOptions = clusterFormData.regional
-        ? Object.keys(FULL_HIERARCHY[clusterFormData.regional] || {})
-        : [];
+    // District options - include custom districts from the selected regional
+    const districtOptions = useMemo(() => {
+        if (!stoFormData.regional) return [];
+        const fromHierarchy = Object.keys(FULL_HIERARCHY[stoFormData.regional] || {});
+        // Get custom districts that belong to this regional
+        const customDists = Object.entries(allCustomData?.districtHierarchy || {})
+            .filter(([_, info]) => info?.regional === stoFormData.regional)
+            .map(([name]) => name);
+        return [...new Set([...fromHierarchy, ...customDists])];
+    }, [stoFormData.regional, FULL_HIERARCHY, allCustomData]);
+
+    // Cluster options - include custom clusters from the selected regional and district
+    const clusterOptions = useMemo(() => {
+        if (!stoFormData.regional || !stoFormData.district) return [];
+        const fromHierarchy = Object.keys(FULL_HIERARCHY[stoFormData.regional]?.[stoFormData.district] || {});
+        // Get custom clusters that belong to this regional and district
+        const customClusters = Object.entries(allCustomData?.clusterHierarchy || {})
+            .filter(([_, info]) => info?.regional === stoFormData.regional && info?.district === stoFormData.district)
+            .map(([name]) => name);
+        return [...new Set([...fromHierarchy, ...customClusters])];
+    }, [stoFormData.regional, stoFormData.district, FULL_HIERARCHY, allCustomData]);
+
+    // District hierarchy options (for adding new district)
+    const districtHierarchyOptions = useMemo(() => {
+        if (!districtFormData.regional) return [];
+        const fromHierarchy = Object.keys(FULL_HIERARCHY[districtFormData.regional] || {});
+        const customDists = Object.entries(allCustomData?.districtHierarchy || {})
+            .filter(([_, info]) => info?.regional === districtFormData.regional)
+            .map(([name]) => name);
+        return [...new Set([...fromHierarchy, ...customDists])];
+    }, [districtFormData.regional, FULL_HIERARCHY, allCustomData]);
+
+    // Cluster hierarchy options (for adding new cluster)
+    const clusterDistrictOptions = useMemo(() => {
+        if (!clusterFormData.regional) return [];
+        const fromHierarchy = Object.keys(FULL_HIERARCHY[clusterFormData.regional] || {});
+        const customDists = Object.entries(allCustomData?.districtHierarchy || {})
+            .filter(([_, info]) => info?.regional === clusterFormData.regional)
+            .map(([name]) => name);
+        return [...new Set([...fromHierarchy, ...customDists])];
+    }, [clusterFormData.regional, FULL_HIERARCHY, allCustomData]);
 
     // Reset cascading form when tab changes
     useEffect(() => {
@@ -204,6 +173,7 @@ export default function LocationManager({ isOpen, onClose }) {
     useEffect(() => {
         if (isOpen) {
             setCustomData(loadCustomLocations());
+            setRefreshKey(k => k + 1);
             setNewItem('');
             setEditingId(null);
             setDeleteConfirm(null);
@@ -252,7 +222,7 @@ export default function LocationManager({ isOpen, onClose }) {
     };
 
     // Handle add STO with hierarchy
-    const handleAddStoWithHierarchy = () => {
+    const handleAddStoWithHierarchy = useCallback(() => {
         if (!stoFormData.stoName.trim()) {
             toast.error('Nama STO tidak boleh kosong');
             return;
@@ -274,10 +244,10 @@ export default function LocationManager({ isOpen, onClose }) {
         // Save STO with hierarchy info
         const updated = {
             ...customData,
-            stos: [...customData.stos, normalizedSto],
+            stos: [...(customData.stos || []), normalizedSto],
             // Also save STO hierarchy for reference
             stoHierarchy: {
-                ...customData.stoHierarchy,
+                ...(customData.stoHierarchy || {}),
                 [normalizedSto]: {
                     regional: stoFormData.regional,
                     district: stoFormData.district,
@@ -288,13 +258,14 @@ export default function LocationManager({ isOpen, onClose }) {
 
         setCustomData(updated);
         saveCustomLocations(updated);
+        setRefreshKey(k => k + 1);
         setStoFormData({ regional: '', district: '', cluster: '', stoName: '' });
         setShowAddForm(false);
         toast.success(`STO "${normalizedSto}" berhasil ditambahkan ke ${stoFormData.cluster}`);
-    };
+    }, [stoFormData, customData]);
 
     // Handle add District with hierarchy
-    const handleAddDistrictWithHierarchy = () => {
+    const handleAddDistrictWithHierarchy = useCallback(() => {
         if (!districtFormData.districtName.trim()) {
             toast.error('Nama District tidak boleh kosong');
             return;
@@ -315,9 +286,9 @@ export default function LocationManager({ isOpen, onClose }) {
 
         const updated = {
             ...customData,
-            districts: [...customData.districts, normalizedDistrict],
+            districts: [...(customData.districts || []), normalizedDistrict],
             districtHierarchy: {
-                ...customData.districtHierarchy,
+                ...(customData.districtHierarchy || {}),
                 [normalizedDistrict]: {
                     regional: districtFormData.regional
                 }
@@ -326,13 +297,14 @@ export default function LocationManager({ isOpen, onClose }) {
 
         setCustomData(updated);
         saveCustomLocations(updated);
+        setRefreshKey(k => k + 1);
         setDistrictFormData({ regional: '', districtName: '' });
         setShowAddForm(false);
         toast.success(`District "${normalizedDistrict}" berhasil ditambahkan ke ${districtFormData.regional}`);
-    };
+    }, [districtFormData, customData]);
 
     // Handle add Cluster with hierarchy
-    const handleAddClusterWithHierarchy = () => {
+    const handleAddClusterWithHierarchy = useCallback(() => {
         if (!clusterFormData.clusterName.trim()) {
             toast.error('Nama Cluster tidak boleh kosong');
             return;
@@ -353,9 +325,9 @@ export default function LocationManager({ isOpen, onClose }) {
 
         const updated = {
             ...customData,
-            clusters: [...customData.clusters, normalizedCluster],
+            clusters: [...(customData.clusters || []), normalizedCluster],
             clusterHierarchy: {
-                ...customData.clusterHierarchy,
+                ...(customData.clusterHierarchy || {}),
                 [normalizedCluster]: {
                     regional: clusterFormData.regional,
                     district: clusterFormData.district
@@ -365,12 +337,14 @@ export default function LocationManager({ isOpen, onClose }) {
 
         setCustomData(updated);
         saveCustomLocations(updated);
+        setRefreshKey(k => k + 1);
         setClusterFormData({ regional: '', district: '', clusterName: '' });
         setShowAddForm(false);
         toast.success(`Cluster "${normalizedCluster}" berhasil ditambahkan`);
-    };
+    }, [clusterFormData, customData]);
 
-    const allLocations = getAllLocations();
+    // Recompute allLocations when customData changes
+    const allLocations = useMemo(() => getAllLocations(), [refreshKey, customData]);
     const currentItems = allLocations[activeTab];
     const defaultItems = DEFAULT_HIERARCHY[activeTab];
 
@@ -473,8 +447,8 @@ export default function LocationManager({ isOpen, onClose }) {
                 <button
                     onClick={() => setAddMode('hierarchy')}
                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${addMode === 'hierarchy'
-                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300'
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300'
                         }`}
                 >
                     <Link2 className="w-5 h-5" />
@@ -484,8 +458,8 @@ export default function LocationManager({ isOpen, onClose }) {
                 <button
                     onClick={() => setAddMode('standalone')}
                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${addMode === 'standalone'
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-300'
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-300'
                         }`}
                 >
                     <Link2Off className="w-5 h-5" />
@@ -847,8 +821,8 @@ export default function LocationManager({ isOpen, onClose }) {
                         <button
                             onClick={() => setShowAddForm(true)}
                             className={`w-full p-3 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 font-medium transition-colors ${activeTab === 'stos'
-                                    ? 'border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
-                                    : 'border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                                ? 'border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                                : 'border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
                                 }`}
                         >
                             <Plus className="w-5 h-5" />

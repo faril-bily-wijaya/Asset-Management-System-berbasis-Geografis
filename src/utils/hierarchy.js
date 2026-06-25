@@ -53,6 +53,10 @@ export const REGIONAL_HIERARCHY = {
 // Storage key for custom locations
 const LOCATIONS_STORAGE_KEY = 'map_inventory_locations';
 
+export const triggerLocationsUpdate = () => {
+  window.dispatchEvent(new Event('locations_updated'));
+};
+
 // Default STO list from data-location.json
 const DEFAULT_STOS = [
   'ARGA MAKMUR', 'BABAT TOMAN', 'BANDAR JAYA', 'BANGKO', 'BATURAJA',
@@ -287,4 +291,16 @@ export function getLocationsByClusterLegacy(districtsArray, clustersArray) {
   }
 
   return [...new Set(allLocations)].sort();
+}
+
+// React Hook untuk me-re-render komponen saat custom data lokasi berubah
+import { useState, useEffect } from 'react';
+export function useDynamicHierarchy() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => setTick(t => t + 1);
+    window.addEventListener('locations_updated', handleUpdate);
+    return () => window.removeEventListener('locations_updated', handleUpdate);
+  }, []);
+  return tick;
 }

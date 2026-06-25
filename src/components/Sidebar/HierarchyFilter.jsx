@@ -1,12 +1,31 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import MultiSelect from '../MultiSelect';
-import { getDistrictListLegacy, getClustersByDistrictLegacy, getLocationsByClusterLegacy } from '../../utils/hierarchy';
+import { getDistrictListLegacy, getClustersByDistrictLegacy, getLocationsByClusterLegacy, useDynamicHierarchy } from '../../utils/hierarchy';
 
 export default function HierarchyFilter({
   districtFilter, setDistrictFilter,
   clusterFilter, setClusterFilter,
   locationFilter, setLocationFilter,
 }) {
+  // Subscribe to hierarchy updates
+  const hierarchyTick = useDynamicHierarchy();
+
+  // Recompute options when hierarchy changes
+  const districtOptions = useMemo(() => {
+    void hierarchyTick; // Force recompute on hierarchy update
+    return getDistrictListLegacy();
+  }, [hierarchyTick]);
+
+  const clusterOptions = useMemo(() => {
+    void hierarchyTick;
+    return getClustersByDistrictLegacy(districtFilter);
+  }, [hierarchyTick, districtFilter]);
+
+  const locationOptions = useMemo(() => {
+    void hierarchyTick;
+    return getLocationsByClusterLegacy(districtFilter, clusterFilter);
+  }, [hierarchyTick, districtFilter, clusterFilter]);
+
   return (
     <div className="space-y-4 mt-8">
       <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Filter Hierarki Area</h3>
@@ -33,7 +52,7 @@ export default function HierarchyFilter({
         {/* Row 2: District & Cluster */}
         <div className="flex flex-col gap-1.5 relative z-40">
           <MultiSelect
-            options={getDistrictListLegacy()}
+            options={districtOptions}
             selected={districtFilter}
             onChange={setDistrictFilter}
             placeholder="All Districts"
@@ -41,7 +60,7 @@ export default function HierarchyFilter({
         </div>
         <div className="flex flex-col gap-1.5 relative z-30">
           <MultiSelect
-            options={getClustersByDistrictLegacy(districtFilter)}
+            options={clusterOptions}
             selected={clusterFilter}
             onChange={setClusterFilter}
             placeholder="All Clusters"
@@ -51,7 +70,7 @@ export default function HierarchyFilter({
         {/* Row 3: Location */}
         <div className="col-span-2 flex flex-col gap-1.5 relative z-20">
           <MultiSelect
-            options={getLocationsByClusterLegacy(districtFilter, clusterFilter)}
+            options={locationOptions}
             selected={locationFilter}
             onChange={setLocationFilter}
             placeholder="All Locations"

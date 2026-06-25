@@ -16,7 +16,7 @@ import {
     FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getAllLocations, getAreaForLocation, getDistrictForLocation, getClusterForLocation } from '../../utils/hierarchy';
+import { getAllLocations, getAreaForLocation, getDistrictForLocation, getClusterForLocation, useDynamicHierarchy } from '../../utils/hierarchy';
 import BottomSheet from '../BottomSheet';
 import LocationManager from './LocationManager';
 import AutoComplete from '../AutoComplete';
@@ -101,7 +101,15 @@ export default function DeviceCRUDPanel({ isOpen, onClose, onDeviceAdded }) {
     const [customModels, setCustomModels] = useState([]);
     const [customRooms, setCustomRooms] = useState([]);
 
-    const locations = getAllLocations();
+    // Subscribe to hierarchy updates
+    const hierarchyTick = useDynamicHierarchy();
+
+    // Recompute locations when hierarchy changes
+    const locations = useMemo(() => {
+        // Force recompute when hierarchyTick changes
+        void hierarchyTick;
+        return getAllLocations();
+    }, [hierarchyTick]);
 
     // Load all data on mount
     useEffect(() => {
