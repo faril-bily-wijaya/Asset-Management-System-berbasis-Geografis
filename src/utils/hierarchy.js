@@ -50,42 +50,6 @@ export const REGIONAL_HIERARCHY = {
   }
 };
 
-// Get list of Areas (top level)
-export function getAreas() {
-  return Object.keys(REGIONAL_HIERARCHY);
-}
-
-// Get Districts by Area
-export function getDistrictsByArea(area) {
-  if (!area || !REGIONAL_HIERARCHY[area]) return [];
-  return Object.keys(REGIONAL_HIERARCHY[area]);
-}
-
-// Get Clusters by Area and District
-export function getClustersByDistrict(area, district) {
-  if (!area || !district || !REGIONAL_HIERARCHY[area] || !REGIONAL_HIERARCHY[area][district]) return [];
-  return Object.keys(REGIONAL_HIERARCHY[area][district]);
-}
-
-// Get Locations by Area, District, and Cluster
-export function getLocationsByCluster(area, district, cluster) {
-  if (!area || !district || !cluster) return [];
-  if (!REGIONAL_HIERARCHY[area] || !REGIONAL_HIERARCHY[area][district]) return [];
-  return REGIONAL_HIERARCHY[area][district][cluster] || [];
-}
-
-// Get all locations for an area
-export function getAllLocationsByArea(area) {
-  if (!area || !REGIONAL_HIERARCHY[area]) return [];
-  const locations = [];
-  for (const district of Object.keys(REGIONAL_HIERARCHY[area])) {
-    for (const cluster of Object.keys(REGIONAL_HIERARCHY[area][district])) {
-      locations.push(...REGIONAL_HIERARCHY[area][district][cluster]);
-    }
-  }
-  return [...new Set(locations)].sort();
-}
-
 // Storage key for custom locations
 const LOCATIONS_STORAGE_KEY = 'map_inventory_locations';
 
@@ -126,6 +90,94 @@ export function loadCustomLocations() {
   return { regionals: [], districts: [], clusters: [], stos: [] };
 }
 
+// Get combined hierarchy (Static + Custom from localStorage)
+export function getCombinedHierarchy() {
+  // Deep clone static hierarchy
+  const combined = JSON.parse(JSON.stringify(REGIONAL_HIERARCHY));
+  
+  const custom = loadCustomLocations();
+  
+  // Add standalone districts
+  if (custom.districts) {
+    custom.districts.forEach(d => {
+      const reg = custom.districtHierarchy?.[d]?.regional || "REGIONAL SUMBAGSEL";
+      if (!combined[reg]) combined[reg] = {};
+      if (!combined[reg][d]) combined[reg][d] = {};
+    });
+  }
+
+  // Add clusters
+  if (custom.clusters) {
+    custom.clusters.forEach(c => {
+      const h = custom.clusterHierarchy?.[c] || {};
+      const reg = h.regional || "REGIONAL SUMBAGSEL";
+      const dist = h.district || "UNKNOWN_DISTRICT";
+      if (!combined[reg]) combined[reg] = {};
+      if (!combined[reg][dist]) combined[reg][dist] = {};
+      if (!combined[reg][dist][c]) combined[reg][dist][c] = [];
+    });
+  }
+
+  // Add STOs
+  if (custom.stos) {
+    custom.stos.forEach(sto => {
+      const h = custom.stoHierarchy?.[sto] || {};
+      const reg = h.regional || "REGIONAL SUMBAGSEL";
+      const dist = h.district || "UNKNOWN_DISTRICT";
+      const clust = h.cluster || "UNKNOWN_CLUSTER";
+      
+      if (!combined[reg]) combined[reg] = {};
+      if (!combined[reg][dist]) combined[reg][dist] = {};
+      if (!combined[reg][dist][clust]) combined[reg][dist][clust] = [];
+      if (!combined[reg][dist][clust].includes(sto)) {
+        combined[reg][dist][clust].push(sto);
+      }
+    });
+  }
+
+  return combined;
+}
+
+// Get list of Areas (top level)
+export function getAreas() {
+  return Object.keys(getCombinedHierarchy());
+}
+
+// Get Districts by Area
+export function getDistrictsByArea(area) {
+  const hierarchy = getCombinedHierarchy();
+  if (!area || !hierarchy[area]) return [];
+  return Object.keys(hierarchy[area]);
+}
+
+// Get Clusters by Area and District
+export function getClustersByDistrict(area, district) {
+  const hierarchy = getCombinedHierarchy();
+  if (!area || !district || !hierarchy[area] || !hierarchy[area][district]) return [];
+  return Object.keys(hierarchy[area][district]);
+}
+
+// Get Locations by Area, District, and Cluster
+export function getLocationsByCluster(area, district, cluster) {
+  const hierarchy = getCombinedHierarchy();
+  if (!area || !district || !cluster) return [];
+  if (!hierarchy[area] || !hierarchy[area][district]) return [];
+  return hierarchy[area][district][cluster] || [];
+}
+
+// Get all locations for an area
+export function getAllLocationsByArea(area) {
+  const hierarchy = getCombinedHierarchy();
+  if (!area || !hierarchy[area]) return [];
+  const locations = [];
+  for (const district of Object.keys(hierarchy[area])) {
+    for (const cluster of Object.keys(hierarchy[area][district])) {
+      locations.push(...hierarchy[area][district][cluster]);
+    }
+  }
+  return [...new Set(locations)].sort();
+}
+
 // Get all locations (from hierarchy + custom STOs from localStorage)
 export function getAllLocations() {
   const custom = loadCustomLocations();
@@ -136,7 +188,8 @@ export function getAllLocations() {
 
 // Fungsi bantuan untuk mendapatkan nama District dari sebuah lokasi
 export function getDistrictForLocation(locationName) {
-  for (const [area, districts] of Object.entries(REGIONAL_HIERARCHY)) {
+  const hierarchy = getCombinedHierarchy();
+  for (const [area, districts] of Object.entries(hierarchy)) {
     for (const [district, clusters] of Object.entries(districts)) {
       for (const locations of Object.values(clusters)) {
         if (locations.includes(locationName)) {
@@ -150,7 +203,8 @@ export function getDistrictForLocation(locationName) {
 
 // Fungsi bantuan untuk mendapatkan nama Cluster dari sebuah lokasi
 export function getClusterForLocation(locationName) {
-  for (const [area, districts] of Object.entries(REGIONAL_HIERARCHY)) {
+  const hierarchy = getCombinedHierarchy();
+  for (const [area, districts] of Object.entries(hierarchy)) {
     for (const [district, clusters] of Object.entries(districts)) {
       for (const [clusterName, locations] of Object.entries(clusters)) {
         if (locations.includes(locationName)) {
@@ -164,7 +218,8 @@ export function getClusterForLocation(locationName) {
 
 // Fungsi bantuan untuk mendapatkan Area dari sebuah lokasi
 export function getAreaForLocation(locationName) {
-  for (const [area, districts] of Object.entries(REGIONAL_HIERARCHY)) {
+  const hierarchy = getCombinedHierarchy();
+  for (const [area, districts] of Object.entries(hierarchy)) {
     for (const clusters of Object.values(districts)) {
       for (const locations of Object.values(clusters)) {
         if (locations.includes(locationName)) {
@@ -186,16 +241,25 @@ export function getHierarchyPath(locationName) {
 }
 
 // Legacy exports for backward compatibility
-export const DISTRICT_LIST = Object.keys(REGIONAL_HIERARCHY["REGIONAL SUMBAGSEL"] || {});
+
+// Mengganti DISTRICT_LIST menjadi function agar nilainya dinamis
+export function getDistrictListLegacy() {
+  const hierarchy = getCombinedHierarchy();
+  return Object.keys(hierarchy["REGIONAL SUMBAGSEL"] || {});
+}
+
+// Kita biarkan konstanta dummy untuk mencegah error import destructuring di file lama
+export const DISTRICT_LIST = []; 
 
 export function getClustersByDistrictLegacy(districtsArray) {
   let allClusters = [];
+  const hierarchy = getCombinedHierarchy();
   const area = "REGIONAL SUMBAGSEL";
-  const districts = districtsArray && districtsArray.length > 0 ? districtsArray : DISTRICT_LIST;
+  const districts = districtsArray && districtsArray.length > 0 ? districtsArray : getDistrictListLegacy();
 
   for (const d of districts) {
-    if (REGIONAL_HIERARCHY[area] && REGIONAL_HIERARCHY[area][d]) {
-      allClusters = allClusters.concat(Object.keys(REGIONAL_HIERARCHY[area][d]));
+    if (hierarchy[area] && hierarchy[area][d]) {
+      allClusters = allClusters.concat(Object.keys(hierarchy[area][d]));
     }
   }
   return [...new Set(allClusters)].sort();
@@ -203,19 +267,20 @@ export function getClustersByDistrictLegacy(districtsArray) {
 
 export function getLocationsByClusterLegacy(districtsArray, clustersArray) {
   let allLocations = [];
+  const hierarchy = getCombinedHierarchy();
   const area = "REGIONAL SUMBAGSEL";
-  const districts = districtsArray && districtsArray.length > 0 ? districtsArray : DISTRICT_LIST;
+  const districts = districtsArray && districtsArray.length > 0 ? districtsArray : getDistrictListLegacy();
 
   for (const d of districts) {
-    if (REGIONAL_HIERARCHY[area] && REGIONAL_HIERARCHY[area][d]) {
-      const clustersInD = Object.keys(REGIONAL_HIERARCHY[area][d]);
+    if (hierarchy[area] && hierarchy[area][d]) {
+      const clustersInD = Object.keys(hierarchy[area][d]);
       const targetClusters = clustersArray && clustersArray.length > 0
         ? clustersInD.filter(c => clustersArray.includes(c))
         : clustersInD;
 
       for (const c of targetClusters) {
-        if (REGIONAL_HIERARCHY[area][d][c]) {
-          allLocations = allLocations.concat(REGIONAL_HIERARCHY[area][d][c]);
+        if (hierarchy[area][d][c]) {
+          allLocations = allLocations.concat(hierarchy[area][d][c]);
         }
       }
     }

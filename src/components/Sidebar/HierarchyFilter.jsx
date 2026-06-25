@@ -1,6 +1,6 @@
 import React from 'react';
 import MultiSelect from '../MultiSelect';
-import { DISTRICT_LIST, getClustersByDistrictLegacy, getLocationsByClusterLegacy } from '../../utils/hierarchy';
+import { getDistrictListLegacy, getClustersByDistrictLegacy, getLocationsByClusterLegacy } from '../../utils/hierarchy';
 
 export default function HierarchyFilter({
   districtFilter, setDistrictFilter,
@@ -33,7 +33,7 @@ export default function HierarchyFilter({
         {/* Row 2: District & Cluster */}
         <div className="flex flex-col gap-1.5 relative z-40">
           <MultiSelect
-            options={DISTRICT_LIST}
+            options={getDistrictListLegacy()}
             selected={districtFilter}
             onChange={setDistrictFilter}
             placeholder="All Districts"
