@@ -2,3 +2,5 @@ untuk database server, lalu frontend akan dijalankan di vps (sudah jalan), denga
 ip publik vps: 124.156.204.209
 port: 8080 (hanya boleh akses port ini karena port lain sudah digunakan oleh program lain) jadi untuk server dan database di port ini semua 
 ini untuk urlnya: http://124.156.204.209:8080/
+
+lalu ini link repo githubnya: https://github.com/faril-bily-wijaya/Asset-Management-System-berbasis-Geografis-INTERNAL.git
