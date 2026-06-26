@@ -24,18 +24,14 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/" element={<MainLayout />}>
+            <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route index element={<MapPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
               <Route path="network" element={<NetworkPage />} />
               <Route path="filter" element={<FilterPage />} />
               <Route
                 path="manajemen"
-                element={
-                  <ProtectedRoute>
-                    <ManagementPage />
-                  </ProtectedRoute>
-                }
+                element={<ManagementPage />}
               />
             </Route>
           </Routes>
