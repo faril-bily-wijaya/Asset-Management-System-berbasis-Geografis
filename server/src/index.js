@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
@@ -18,10 +17,6 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Middleware
-app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginOpenerPolicy: false
-}));
 app.use(cors({
     origin: process.env.FRONTEND_URL || '*',
     credentials: true
