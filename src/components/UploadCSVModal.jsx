@@ -249,7 +249,7 @@ export default function UploadCSVModal({ isOpen, onClose, onImport, existingLoca
     const invalidRows = csvData?.rowValidation?.filter(r => !r.valid).length || 0;
 
     return (
-        <div className="fixed inset-0 z-[4200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden m-4 flex flex-col">
                 {/* Header */}
                 <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 flex-shrink-0">
