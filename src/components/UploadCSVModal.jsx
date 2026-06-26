@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, FileText, AlertCircle, CheckCircle, Download, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 const REQUIRED_FIELDS = ['LOCATION', 'DEVICE_TYPE', 'DEVICE_NAME'];
 const OPTIONAL_FIELDS = ['MERK', 'MODEL', 'KAPASITAS', 'YEAR', 'ROOM', 'STATUS', 'SERIAL_NUMBER'];
@@ -39,25 +40,44 @@ const validateRow = (row, rowIndex, existingLocations = []) => {
     return errors;
 };
 
-const parseCSV = (text) => {
-    const lines = text.trim().split('\n');
-    if (lines.length < 2) {
-        throw new Error('CSV harus memiliki header dan minimal 1 data row');
-    }
+const parseFile = async (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Get raw json
+                const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                
+                if (rawJson.length === 0) {
+                    throw new Error('File kosong atau tidak memiliki baris data');
+                }
 
-    const headers = lines[0].split(',').map(h => h.trim().toUpperCase());
-    const rows = [];
+                // Extract headers from the first object (keys)
+                // Normalize headers to UPPERCASE
+                const headers = Object.keys(rawJson[0]).map(h => h.trim().toUpperCase());
+                
+                // Reconstruct rows with normalized headers
+                const rows = rawJson.map(row => {
+                    const normalizedRow = {};
+                    Object.keys(row).forEach(key => {
+                        normalizedRow[key.trim().toUpperCase()] = String(row[key] || '').trim();
+                    });
+                    return normalizedRow;
+                });
 
-    for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        const row = {};
-        headers.forEach((header, index) => {
-            row[header] = values[index] || '';
-        });
-        rows.push(row);
-    }
-
-    return { headers, rows };
+                resolve({ headers, rows });
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = (error) => reject(error);
+        reader.readAsArrayBuffer(file);
+    });
 };
 
 export default function UploadCSVModal({ isOpen, onClose, onImport, existingLocations = [] }) {
@@ -73,15 +93,13 @@ export default function UploadCSVModal({ isOpen, onClose, onImport, existingLoca
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!file.name.endsWith('.csv')) {
-            toast.error('Hanya file CSV yang didukung');
+        if (!file.name.match(/\.(csv|xlsx|xls)$/i)) {
+            toast.error('Hanya file CSV atau Excel yang didukung');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
+        parseFile(file).then(({ headers, rows }) => {
             try {
-                const { headers, rows } = parseCSV(event.target.result);
 
                 // Check for required fields
                 const missingRequired = REQUIRED_FIELDS.filter(field =>
@@ -133,22 +151,23 @@ export default function UploadCSVModal({ isOpen, onClose, onImport, existingLoca
                     toast.success(`Berhasil parse ${rows.length} data`);
                 }
             } catch (err) {
-                toast.error(`Gagal parse CSV: ${err.message}`);
+                toast.error(`Gagal validasi data: ${err.message}`);
             }
-        };
-        reader.readAsText(file);
+        }).catch(err => {
+            toast.error(`Gagal membaca file: ${err.message}`);
+        });
     }, [existingLocations]);
 
     const handleDrop = useCallback((e) => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (file && file.name.endsWith('.csv')) {
+        if (file && file.name.match(/\.(csv|xlsx|xls)$/i)) {
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);
             fileInputRef.current.files = dataTransfer.files;
             handleFileSelect({ target: { files: [file] } });
         } else {
-            toast.error('Hanya file CSV yang didukung');
+            toast.error('Hanya file CSV atau Excel yang didukung');
         }
     }, [handleFileSelect]);
 
@@ -235,8 +254,8 @@ export default function UploadCSVModal({ isOpen, onClose, onImport, existingLoca
                 {/* Header */}
                 <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 flex-shrink-0">
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">Upload CSV</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Import data perangkat dari file CSV</p>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">Upload Data (Excel/CSV)</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Import data perangkat dari file .xlsx atau .csv</p>
                     </div>
                     <button onClick={handleClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg">
                         <X className="w-5 h-5" />
@@ -256,13 +275,13 @@ export default function UploadCSVModal({ isOpen, onClose, onImport, existingLoca
                             >
                                 <Upload className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-4" />
                                 <p className="text-lg font-medium text-slate-600 dark:text-slate-400">
-                                    Drag & Drop file CSV di sini
+                                    Drag & Drop file Excel/CSV di sini
                                 </p>
                                 <p className="text-sm text-slate-400 mt-1">atau klik untuk pilih file</p>
                                 <input
                                     ref={fileInputRef}
                                     type="file"
-                                    accept=".csv"
+                                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                                     onChange={handleFileSelect}
                                     className="hidden"
                                 />

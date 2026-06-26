@@ -1,12 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { isCatuDaya } from '../utils/parser';
-import { getDistrictForLocation, getClusterForLocation } from '../utils/hierarchy';
+import { getDistrictForLocation, getClusterForLocation, getAreaForLocation } from '../utils/hierarchy';
 import { generateTopologyLinks } from '../utils/topology';
 import toast from 'react-hot-toast';
 import { locationsAPI } from '../services/api';
 
 // Flag untuk menggunakan API atau localStorage
 const USE_API = import.meta.env.VITE_USE_API === 'true' || false;
+
+// Storage key for custom devices
+const CUSTOM_DEVICES_KEY = 'map_inventory_custom_devices';
 
 export default function useMapData(filters) {
   const {
@@ -30,6 +33,9 @@ export default function useMapData(filters) {
       return {};
     }
   });
+
+  // Track custom devices for reactivity
+  const [customDevicesVersion, setCustomDevicesVersion] = useState(0);
 
   const { availableBrands, availableStatuses, availableConditions } = useMemo(() => {
     const brands = new Set();
@@ -55,6 +61,32 @@ export default function useMapData(filters) {
   const topologyLinks = useMemo(() => {
     return generateTopologyLinks(locationsData);
   }, [locationsData]);
+
+  // Listen for custom devices updates
+  useEffect(() => {
+    const handleCustomDevicesUpdate = () => {
+      setCustomDevicesVersion(v => v + 1);
+    };
+    window.addEventListener('custom_devices_updated', handleCustomDevicesUpdate);
+    return () => window.removeEventListener('custom_devices_updated', handleCustomDevicesUpdate);
+  }, []);
+
+  // Load custom devices from localStorage - using useState and useEffect pattern
+  const [customDevices, setCustomDevices] = useState([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_DEVICES_KEY);
+      if (stored) {
+        setCustomDevices(JSON.parse(stored));
+      } else {
+        setCustomDevices([]);
+      }
+    } catch (e) {
+      console.error('Failed to load custom devices', e);
+      setCustomDevices([]);
+    }
+  }, [customDevicesVersion]);
 
   // Load data on mount
   useEffect(() => {
@@ -140,7 +172,22 @@ export default function useMapData(filters) {
     }
   }, [activeLocation, addressMap]);
 
-  // Filter and compute stats
+  // Group custom devices by location name
+  const customDevicesByLocation = useMemo(() => {
+    const grouped = {};
+    customDevices.forEach(device => {
+      const locName = device.LOCATION || device.location;
+      if (locName) {
+        if (!grouped[locName]) {
+          grouped[locName] = [];
+        }
+        grouped[locName].push(device);
+      }
+    });
+    return grouped;
+  }, [customDevices]);
+
+  // Filter and compute stats - NOW INTEGRATES CUSTOM DEVICES
   useEffect(() => {
     if (!rawLocationsData.length) return;
 
@@ -151,37 +198,82 @@ export default function useMapData(filters) {
     let nonOp = 0;
 
     const newLocations = rawLocationsData.map(loc => {
-      if (districtFilter.length > 0 && !districtFilter.includes(getDistrictForLocation(loc.name))) return null;
-      if (clusterFilter.length > 0 && !clusterFilter.includes(getClusterForLocation(loc.name))) return null;
+      // Get hierarchy info
+      const locDistrict = getDistrictForLocation(loc.name);
+      const locCluster = getClusterForLocation(loc.name);
+      const locArea = getAreaForLocation(loc.name);
+
+      // Apply hierarchy filters
+      if (districtFilter.length > 0 && !districtFilter.includes(locDistrict)) return null;
+      if (clusterFilter.length > 0 && !clusterFilter.includes(locCluster)) return null;
       if (locationFilter.length > 0 && !locationFilter.includes(loc.name)) return null;
 
-      const filteredDevices = loc.devices.filter(d => {
-        const isCD = isCatuDaya(d.DEVICE_TYPE);
+      // Get custom devices for this location
+      const customDevicesHere = customDevicesByLocation[loc.name] || [];
+
+      // Combine static devices with custom devices
+      const allDevices = [...loc.devices, ...customDevicesHere];
+
+      // Apply filters to all devices
+      const filteredDevices = allDevices.filter(d => {
+        const deviceType = d.DEVICE_TYPE || d.device_type || '';
+        const isCD = isCatuDaya(deviceType);
+
+        // Category filter
         if (filter === 'CATU_DAYA' && !isCD) return false;
         if (filter === 'NON_CATU_DAYA' && isCD) return false;
 
-        if (statusFilter !== 'ALL' && d.STATUS !== statusFilter) return false;
-        if (conditionFilter !== 'ALL' && d.CONDITION !== conditionFilter) return false;
-        if (brandFilter !== 'ALL' && d.BRAND !== brandFilter) return false;
+        // Status filter - normalize status value
+        const deviceStatus = (d.STATUS || d.status || '').toUpperCase();
+        const targetStatus = statusFilter.toUpperCase();
+        if (targetStatus !== 'ALL' && deviceStatus !== targetStatus) return false;
 
+        // Condition filter
+        const deviceCondition = d.CONDITION || d.condition || '';
+        if (conditionFilter !== 'ALL' && deviceCondition !== conditionFilter) return false;
+
+        // Brand filter - check both BRAND and MERK
+        const deviceBrand = d.BRAND || d.MERK || d.brand || '';
+        if (brandFilter !== 'ALL' && deviceBrand !== brandFilter) return false;
+
+        // Search filter - search by device name, type, brand, location, and merk
         if (search) {
           const q = search.toLowerCase();
-          if (!d.LOCATION.toLowerCase().includes(q) &&
-            !(d.DEVICE_CODE && d.DEVICE_CODE.toLowerCase().includes(q)) &&
-            !(d.DEVICE_TYPE && d.DEVICE_TYPE.toLowerCase().includes(q)) &&
-            !(d.BRAND && d.BRAND.toLowerCase().includes(q)) &&
-            !(d.CONDITION && d.CONDITION.toLowerCase().includes(q))) {
-            return false;
-          }
+          const deviceName = (d.DEVICE_NAME || d.device_name || d.name || '').toLowerCase();
+          const deviceCode = (d.DEVICE_CODE || d.device_code || '').toLowerCase();
+          const deviceTypeLower = deviceType.toLowerCase();
+          const deviceBrandLower = deviceBrand.toLowerCase();
+          const deviceLocation = (d.LOCATION || d.location || loc.name || '').toLowerCase();
+          const deviceMerk = (d.MERK || '').toLowerCase();
+
+          const matchesSearch =
+            deviceName.includes(q) ||
+            deviceLocation.includes(q) ||
+            deviceCode.includes(q) ||
+            deviceTypeLower.includes(q) ||
+            deviceBrandLower.includes(q) ||
+            deviceMerk.includes(q);
+
+          if (!matchesSearch) return false;
         }
         return true;
       });
 
+      // Calculate counts
       let catuDayaCount = 0;
       let nonCatuDayaCount = 0;
       filteredDevices.forEach(d => {
-        if (isCatuDaya(d.DEVICE_TYPE)) { catuDayaCount++; cDaya++; } else { nonCatuDayaCount++; nonCDaya++; }
-        if (d.STATUS === 'OPERATIONAL') op++; else nonOp++;
+        const deviceType = d.DEVICE_TYPE || d.device_type || '';
+        if (isCatuDaya(deviceType)) {
+          catuDayaCount++;
+          cDaya++;
+        } else {
+          nonCatuDayaCount++;
+          nonCDaya++;
+        }
+
+        const deviceStatus = (d.STATUS || d.status || '').toUpperCase();
+        if (deviceStatus === 'OPERATIONAL') op++; else nonOp++;
       });
 
       totalDevs += filteredDevices.length;
@@ -190,13 +282,15 @@ export default function useMapData(filters) {
         ...loc,
         devices: filteredDevices,
         catuDayaCount,
-        nonCatuDayaCount
+        nonCatuDayaCount,
+        // Mark if has custom devices
+        hasCustomDevices: customDevicesHere.length > 0
       };
     }).filter(loc => loc !== null && loc.devices.length > 0);
 
     setLocationsData(newLocations);
     setStats({ total: totalDevs, catuDaya: cDaya, nonCatuDaya: nonCDaya, operational: op, nonOperational: nonOp });
-  }, [rawLocationsData, filter, statusFilter, conditionFilter, brandFilter, search, districtFilter, clusterFilter, locationFilter, districtFilterParam, clusterFilterParam, locationFilterParam]);
+  }, [rawLocationsData, filter, statusFilter, conditionFilter, brandFilter, search, districtFilter, clusterFilter, locationFilter, districtFilterParam, clusterFilterParam, locationFilterParam, customDevicesByLocation]);
 
   return {
     rawLocationsData, setRawLocationsData,
@@ -206,5 +300,6 @@ export default function useMapData(filters) {
     addressMap,
     topologyLinks,
     availableBrands, availableStatuses, availableConditions,
+    customDevices,
   };
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MapPin, X, Moon, Sun, Settings, BarChart3, Network, ChevronDown, ChevronUp, SlidersHorizontal, PanelLeftClose } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MapPin, X, Moon, Sun, Settings, BarChart3, Network, ChevronDown, ChevronUp, SlidersHorizontal, PanelLeftClose, LogOut, User } from 'lucide-react';
 import SearchBar from './SearchBar';
 import DataSummaryCard from './DataSummaryCard';
 import MapStyleToggle from './MapStyleToggle';
@@ -8,6 +9,7 @@ import DeviceCategoryFilter from './DeviceCategoryFilter';
 import HierarchyFilter from './HierarchyFilter';
 import { useFilterContext } from '../../contexts/FilterContext';
 import { useMapContext } from '../../contexts/MapContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Sidebar({
   isOpen, onClose,
@@ -24,6 +26,8 @@ export default function Sidebar({
   // Collapse
   isCollapsed, onToggleCollapse,
 }) {
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
   const filters = useFilterContext();
   const mapData = useMapContext();
   const [showFilters, setShowFilters] = useState(true);
@@ -158,13 +162,7 @@ export default function Sidebar({
               {hasActiveFilters && (
                 <button
                   onClick={() => {
-                    filters.setFilter('ALL');
-                    filters.setStatusFilter('ALL');
-                    filters.setConditionFilter('ALL');
-                    filters.setBrandFilter('ALL');
-                    filters.setDistrictFilter([]);
-                    filters.setClusterFilter([]);
-                    filters.setLocationFilter([]);
+                    filters.resetAllFilters();
                   }}
                   className="w-full py-2 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium transition-colors"
                 >
@@ -179,34 +177,49 @@ export default function Sidebar({
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Menu</h3>
 
-          <button
-            onClick={() => onNavigate('management')}
-            className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
-          >
-            <Settings className="w-5 h-5" />
-            Manajemen Data
-          </button>
+          {!isAuthenticated ? (
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md"
+            >
+              <LogOut className="w-5 h-5 rotate-180" />
+              Login Admin
+            </button>
+          ) : (
+            <>
+              <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/30 flex flex-col items-center">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Logged in as</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{user?.full_name || user?.username}</span>
+              </div>
+
+              <button
+                onClick={() => onNavigate('management')}
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
+              >
+                <Settings className="w-5 h-5" />
+                Manajemen Data
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="w-full py-2.5 px-3 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 text-violet-600 dark:text-violet-400 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                >
+                  <User className="w-4 h-4" />
+                  Profil
+                </button>
+                <button
+                  onClick={logout}
+                  className="w-full py-2.5 px-3 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Keluar
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Quick Links */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={onShowAnalytics}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm"
-            >
-              <BarChart3 className="w-4 h-4 text-blue-500" />
-              Analytics
-            </button>
-            <button
-              onClick={onShowNetwork}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm"
-            >
-              <Network className="w-4 h-4 text-purple-500" />
-              Network
-            </button>
-          </div>
-        </div>
 
         {/* Map Style Toggle */}
         <MapStyleToggle mapStyle={mapStyle} setMapStyle={setMapStyle} />

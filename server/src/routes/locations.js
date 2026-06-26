@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const pool = require('../config/db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -42,8 +42,8 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// Get all locations optimized for map view
-router.get('/map-data', async (req, res) => {
+// Get all locations optimized for map view - requires authentication
+router.get('/map-data', authenticateToken, async (req, res) => {
     try {
         // Fetch all locations
         const locationsResult = await pool.query(
@@ -142,8 +142,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Create location
-router.post('/', authenticateToken, [
+// Create location - Admin only
+router.post('/', authenticateToken, requireRole(['admin']), [
     body('name').notEmpty().trim(),
     body('latitude').isFloat({ min: -90, max: 90 }),
     body('longitude').isFloat({ min: -180, max: 180 })
@@ -173,8 +173,8 @@ router.post('/', authenticateToken, [
     }
 });
 
-// Update location
-router.put('/:id', authenticateToken, async (req, res) => {
+// Update location - Admin only
+router.put('/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         const { name, address, latitude, longitude, region, city, postal_code, cluster, class_type, notes } = req.body;
@@ -211,8 +211,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Delete location
-router.delete('/:id', authenticateToken, async (req, res) => {
+// Delete location - Admin only
+router.delete('/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
 

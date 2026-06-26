@@ -3,7 +3,7 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const { body, query, validationResult } = require('express-validator');
 const pool = require('../config/db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -13,12 +13,13 @@ const storage = multer.diskStorage({
         cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        cb(null, `devices-${Date.now()}.csv`);
+        const ext = require('path').extname(file.originalname) || '.csv';
+        cb(null, `devices-${Date.now()}${ext}`);
     }
 });
 const upload = multer({ storage });
 
-// Get all devices with pagination and filters
+// Get all devices with pagination and filters - requires authentication
 router.get('/', authenticateToken, async (req, res) => {
     try {
         const {
@@ -158,8 +159,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Create device
-router.post('/', authenticateToken, [
+// Create device - Admin only
+router.post('/', authenticateToken, requireRole(['admin']), [
     body('name').notEmpty().trim(),
     body('device_type').notEmpty(),
     body('location_id').isInt()
@@ -264,18 +265,18 @@ router.post('/', authenticateToken, [
     }
 });
 
-// Update device
-router.put('/:id', authenticateToken, async (req, res) => {
+// Update device - Admin only
+router.put('/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         const {
             name, device_name,
-            device_type, serial_number, 
+            device_type, serial_number,
             brand_id, brand_name,
             model_id, model_name,
-            room_id, room_name, 
+            room_id, room_name,
             location_id, location_name,
-            status, capacity, kapasitas, 
+            status, capacity, kapasitas,
             year_operations, year,
             notes, latitude, longitude
         } = req.body;
@@ -363,8 +364,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Delete device
-router.delete('/:id', authenticateToken, async (req, res) => {
+// Delete device - Admin only
+router.delete('/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -384,8 +385,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Bulk delete devices
-router.post('/bulk-delete', authenticateToken, async (req, res) => {
+// Bulk delete devices - Admin only
+router.post('/bulk-delete', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { ids } = req.body;
 
@@ -408,25 +409,30 @@ router.post('/bulk-delete', authenticateToken, async (req, res) => {
     }
 });
 
-// Upload CSV
-router.post('/upload-csv', authenticateToken, upload.single('file'), async (req, res) => {
+// Upload CSV - Admin only
+router.post('/upload-csv', authenticateToken, requireRole(['admin']), upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const devices = [];
+        const xlsx = require('xlsx');
         const fs = require('fs');
+        let devices = [];
 
-        fs.createReadStream(req.file.path)
-            .pipe(csv())
-            .on('data', (row) => {
-                devices.push(row);
-            })
-            .on('end', async () => {
-                try {
-                    let imported = 0;
-                    let errors = [];
+        try {
+            const workbook = xlsx.readFile(req.file.path);
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            devices = xlsx.utils.sheet_to_json(worksheet, { defval: '' }); // defval to ensure empty cells aren't missing keys
+        } catch (e) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ message: 'Invalid file format. Please upload a valid Excel or CSV file.' });
+        }
+
+        try {
+            let imported = 0;
+            let errors = [];
 
                     for (const row of devices) {
                         try {
@@ -500,16 +506,15 @@ router.post('/upload-csv', authenticateToken, upload.single('file'), async (req,
                     // Clean up uploaded file
                     fs.unlinkSync(req.file.path);
 
-                    res.json({
-                        message: 'CSV imported',
-                        imported,
-                        errors: errors.length > 0 ? errors : undefined
-                    });
-                } catch (error) {
-                    console.error('CSV processing error:', error);
-                    res.status(500).json({ message: 'Error processing CSV' });
-                }
+            res.json({
+                message: 'File imported',
+                imported,
+                errors: errors.length > 0 ? errors : undefined
             });
+        } catch (error) {
+            console.error('File processing error:', error);
+            res.status(500).json({ message: 'Error processing file' });
+        }
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ message: 'Server error' });

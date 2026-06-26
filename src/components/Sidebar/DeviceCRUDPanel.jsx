@@ -142,6 +142,8 @@ export default function DeviceCRUDPanel({ isOpen, onClose, onDeviceAdded }) {
     const saveDevices = (newDevices) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newDevices));
         setDevices(newDevices);
+        // Trigger map to reload custom devices
+        window.dispatchEvent(new Event('custom_devices_updated'));
     };
 
     // Get unique brands from devices
@@ -407,7 +409,7 @@ export default function DeviceCRUDPanel({ isOpen, onClose, onDeviceAdded }) {
                     onClick={() => setShowUploadCSV(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium"
                 >
-                    <FileSpreadsheet className="w-4 h-4" /> Upload CSV
+                    <FileSpreadsheet className="w-4 h-4" /> Upload Data (Excel/CSV)
                 </button>
             </div>
 
@@ -708,7 +710,7 @@ export default function DeviceCRUDPanel({ isOpen, onClose, onDeviceAdded }) {
                     setCustomModels(mergedModels);
                     setCustomRooms(mergedRooms);
 
-                    toast.success(`${newDevices.length} perangkat berhasil diimport dari CSV`);
+                    toast.success(`${newDevices.length} perangkat berhasil diimport`);
                 }}
             />
         </>

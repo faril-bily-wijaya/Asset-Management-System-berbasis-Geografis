@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -11,9 +12,10 @@ const devicesRoutes = require('./routes/devices');
 const mastersRoutes = require('./routes/masters');
 const locationsRoutes = require('./routes/locations');
 const hierarchyRoutes = require('./routes/hierarchy');
+const usersRoutes = require('./routes/users');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(helmet());
@@ -25,8 +27,13 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Static files for uploads - ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('📁 Created uploads directory');
+}
+app.use('/uploads', express.static(uploadsDir));
 
 // Serve Frontend Static Files
 app.use(express.static(path.join(__dirname, '../../dist')));
@@ -37,6 +44,7 @@ app.use('/api/devices', devicesRoutes);
 app.use('/api/masters', mastersRoutes);
 app.use('/api/locations', locationsRoutes);
 app.use('/api/locations/hierarchy', hierarchyRoutes);
+app.use('/api/users', usersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

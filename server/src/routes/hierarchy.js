@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const pool = require('../config/db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -89,8 +89,8 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// Create custom hierarchy item
-router.post('/', authenticateToken, [
+// Create custom hierarchy item - Admin only
+router.post('/', authenticateToken, requireRole(['admin']), [
     body('type').isIn(['regional', 'district', 'cluster', 'sto']),
     body('name').notEmpty().trim()
 ], async (req, res) => {
@@ -130,8 +130,8 @@ router.post('/', authenticateToken, [
     }
 });
 
-// Update custom hierarchy item
-router.put('/:id', authenticateToken, async (req, res) => {
+// Update custom hierarchy item - Admin only
+router.put('/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
         const { name, parent_regional, parent_district, parent_cluster } = req.body;
@@ -181,8 +181,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Delete custom hierarchy item
-router.delete('/:id', authenticateToken, async (req, res) => {
+// Delete custom hierarchy item - Admin only
+router.delete('/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -225,8 +225,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Bulk delete hierarchy items
-router.post('/bulk-delete', authenticateToken, async (req, res) => {
+// Bulk delete hierarchy items - Admin only
+router.post('/bulk-delete', authenticateToken, requireRole(['admin']), async (req, res) => {
     try {
         const { ids } = req.body;
 

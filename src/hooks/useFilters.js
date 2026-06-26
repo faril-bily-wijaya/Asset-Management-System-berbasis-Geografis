@@ -41,6 +41,7 @@ export default function useFilters() {
       const newParams = new URLSearchParams(prev);
       if (valArray.length > 0) newParams.set('district', valArray.join(','));
       else newParams.delete('district');
+      // Reset dependent filters when district changes
       newParams.delete('cluster');
       newParams.delete('location');
       return newParams;
@@ -52,6 +53,7 @@ export default function useFilters() {
       const newParams = new URLSearchParams(prev);
       if (valArray.length > 0) newParams.set('cluster', valArray.join(','));
       else newParams.delete('cluster');
+      // Reset location filter when cluster changes
       newParams.delete('location');
       return newParams;
     });
@@ -63,11 +65,17 @@ export default function useFilters() {
 
   const setSearch = useCallback((val) => updateSearchParams('search', val), [updateSearchParams]);
 
+  // Reset all filters to default
+  const resetAllFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams());
+  }, [setSearchParams]);
+
   return {
     filter, statusFilter, conditionFilter, brandFilter,
     districtFilter, clusterFilter, locationFilter, search,
     districtFilterParam, clusterFilterParam, locationFilterParam,
     setFilter, setStatusFilter, setConditionFilter, setBrandFilter,
     setDistrictFilter, setClusterFilter, setLocationFilter, setSearch,
+    resetAllFilters,
   };
 }

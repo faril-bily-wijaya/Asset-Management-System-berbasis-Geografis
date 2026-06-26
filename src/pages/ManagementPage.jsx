@@ -1,16 +1,20 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Database, Layers } from 'lucide-react';
+import { ArrowLeft, Database, Layers, ShieldOff, Lock, Users } from 'lucide-react';
 import DeviceCRUDPanel from '../components/Sidebar/DeviceCRUDPanel';
 import LocationManager from '../components/Sidebar/LocationManager';
+import UserManagementPanel from '../components/Sidebar/UserManagementPanel';
 import { useMapContext } from '../contexts/MapContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ManagementPage() {
     const navigate = useNavigate();
     const mapData = useMapContext();
+    const { isAdmin } = useAuth();
 
     const [showCRUDPanel, setShowCRUDPanel] = React.useState(true);
     const [showLocationManager, setShowLocationManager] = React.useState(false);
+    const [showUserManagement, setShowUserManagement] = React.useState(false);
 
     const handleDeviceAdded = (device) => {
         // Device akan otomatis ditambahkan ke context
@@ -43,35 +47,62 @@ export default function ManagementPage() {
                     </div>
                 </div>
 
-                {/* Tab Navigation */}
-                <div className="mb-6">
-                    <div className="flex gap-2 bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                        <button
-                            onClick={() => { setShowCRUDPanel(true); setShowLocationManager(false); }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${showCRUDPanel
+                {/* Tab Navigation - Admin only */}
+                {isAdmin && (
+                    <div className="mb-6">
+                        <div className="flex gap-2 bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <button
+                                onClick={() => { setShowCRUDPanel(true); setShowLocationManager(false); setShowUserManagement(false); }}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${showCRUDPanel
                                     ? 'bg-emerald-500 text-white shadow-md'
                                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                                }`}
-                        >
-                            <Database className="w-5 h-5" />
-                            Manajemen Perangkat
-                        </button>
-                        <button
-                            onClick={() => { setShowCRUDPanel(false); setShowLocationManager(true); }}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${showLocationManager
+                                    }`}
+                            >
+                                <Database className="w-5 h-5" />
+                                Manajemen Perangkat
+                            </button>
+                            <button
+                                onClick={() => { setShowCRUDPanel(false); setShowLocationManager(true); setShowUserManagement(false); }}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${showLocationManager
                                     ? 'bg-indigo-500 text-white shadow-md'
                                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                                }`}
-                        >
-                            <Layers className="w-5 h-5" />
-                            Manajemen Lokasi
-                        </button>
+                                    }`}
+                            >
+                                <Layers className="w-5 h-5" />
+                                Manajemen Lokasi
+                            </button>
+                            <button
+                                onClick={() => { setShowCRUDPanel(false); setShowLocationManager(false); setShowUserManagement(true); }}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${showUserManagement
+                                    ? 'bg-violet-500 text-white shadow-md'
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                    }`}
+                            >
+                                <Users className="w-5 h-5" />
+                                Manajemen User
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Access denied message for non-admin */}
+                {!isAdmin && (
+                    <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-center gap-3">
+                        <ShieldOff className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        <div>
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                Mode Baca Saja
+                            </p>
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Anda login sebagai staff. Fitur edit, tambah, hapus, dan export tidak tersedia.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Content Panels */}
                 <div>
-                    {showCRUDPanel && (
+                    {isAdmin && showCRUDPanel && (
                         <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
                             <div className="flex items-center gap-2 mb-4">
                                 <Database className="w-5 h-5 text-emerald-500" />
@@ -88,7 +119,7 @@ export default function ManagementPage() {
                         </section>
                     )}
 
-                    {showLocationManager && (
+                    {isAdmin && showLocationManager && (
                         <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
                             <div className="flex items-center gap-2 mb-4">
                                 <Layers className="w-5 h-5 text-indigo-500" />
@@ -100,6 +131,22 @@ export default function ManagementPage() {
                             <LocationManager
                                 isOpen={true}
                                 onClose={() => setShowLocationManager(false)}
+                            />
+                        </section>
+                    )}
+
+                    {isAdmin && showUserManagement && (
+                        <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Users className="w-5 h-5 text-violet-500" />
+                                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Kelola User</h2>
+                            </div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                                Ubah role atau hapus user yang terdaftar.
+                            </p>
+                            <UserManagementPanel
+                                isOpen={true}
+                                onClose={() => setShowUserManagement(false)}
                             />
                         </section>
                     )}

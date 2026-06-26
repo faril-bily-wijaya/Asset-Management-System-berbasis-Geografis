@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { MapPin, Download, X, Edit2, Save, AlertTriangle } from 'lucide-react';
+import { MapPin, Download, X, Edit2, Save, AlertTriangle, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import BottomSheet from '../BottomSheet';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function DeviceTableModal({ modalData, addressMap, onClose, onSaveEdit, onDownloadCSV }) {
   const [editingDeviceId, setEditingDeviceId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const { canEdit, canExport } = useAuth();
 
   // Kriteria Umur Perangkat DEFA yang prioritas dilakukan modernisasi
   const needsModernization = (type, yearStr) => {
@@ -99,7 +101,7 @@ export default function DeviceTableModal({ modalData, addressMap, onClose, onSav
                       <td className="py-2 px-2 md:py-3 md:px-4 text-center">
                         {modernisasi ? (
                           <div className="inline-flex items-center gap-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-1 py-0.5 rounded border border-red-200 dark:border-red-800/30 text-[9px] md:text-[10px] font-bold uppercase tracking-wider">
-                            <AlertTriangle className="w-3 h-3" /> Perlu Mod.
+                            <AlertTriangle className="w-3 h-3" /> Perlu Modernisasi
                           </div>
                         ) : (
                           <span className="text-slate-400 dark:text-slate-500 text-[9px] md:text-[10px]">-</span>
@@ -124,13 +126,17 @@ export default function DeviceTableModal({ modalData, addressMap, onClose, onSav
                           <button onClick={() => handleSave(room)} className="p-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors" title="Simpan">
                             <Save className="w-3 h-3 md:w-4 md:h-4" />
                           </button>
-                        ) : (
+                        ) : canEdit ? (
                           <button
                             onClick={() => { setEditingDeviceId(dev.DEVICE_CODE); setEditForm({ BRAND: dev.BRAND, CAP_REAL: dev.CAP_REAL, STATUS: dev.STATUS, CONDITION: dev.CONDITION, YEAR: dev.YEAR }); }}
                             className="p-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors opacity-0 group-hover:opacity-100" title="Edit Data"
                           >
                             <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
                           </button>
+                        ) : (
+                          <div className="flex items-center justify-center text-slate-300 dark:text-slate-600" title="Hanya admin yang dapat edit">
+                            <Lock className="w-3 h-3" />
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -163,15 +169,17 @@ export default function DeviceTableModal({ modalData, addressMap, onClose, onSav
         {addressMap[`${modalData.coords[0]},${modalData.coords[1]}`] || 'Detail lokasi'}
       </div>
 
-      {/* Download button */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-        <button
-          onClick={() => onDownloadCSV(modalData.name, modalData.devices)}
-          className="w-full py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-sm flex items-center justify-center gap-2 font-bold text-sm"
-        >
-          <Download className="w-4 h-4" /> Unduh CSV
-        </button>
-      </div>
+      {/* Download button - Admin only */}
+      {canExport && (
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => onDownloadCSV(modalData.name, modalData.devices)}
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-sm flex items-center justify-center gap-2 font-bold text-sm"
+          >
+            <Download className="w-4 h-4" /> Unduh CSV
+          </button>
+        </div>
+      )}
 
       {renderContent()}
     </BottomSheet>

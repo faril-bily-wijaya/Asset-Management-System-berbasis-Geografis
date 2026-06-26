@@ -1,26 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, X, Plus, Save, Edit2, MapPin, Activity, Navigation, Clock } from 'lucide-react';
+import { Truck, X, Plus, Save, Edit2, MapPin, Activity, Navigation, Clock, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const GENSETS_STORAGE_KEY = 'map_inventory_mobile_gensets';
 
 export default function MobileGensetTracker({ isOpen, onClose, onGensetClick }) {
   const [gensets, setGensets] = useState([]);
   const [isEditing, setIsEditing] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [isAdding, setIsAdding] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  // Load data from localStorage or static file
   useEffect(() => {
     if (isOpen) {
-      // Load static data initially
+      // First try to load from localStorage
+      try {
+        const stored = localStorage.getItem(GENSETS_STORAGE_KEY);
+        if (stored) {
+          setGensets(JSON.parse(stored));
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to load from localStorage', e);
+      }
+
+      // Fallback to static file
       fetch('/DATA_SECRET/mobile_gensets.json')
         .then(res => res.json())
-        .then(data => setGensets(data))
+        .then(data => {
+          setGensets(data);
+          // Save to localStorage as backup
+          localStorage.setItem(GENSETS_STORAGE_KEY, JSON.stringify(data));
+        })
         .catch(err => {
           console.error("Failed to load mobile gensets", err);
           toast.error("Gagal memuat data genset mobile.");
         });
     }
   }, [isOpen]);
+
+  // Save gensets to localStorage whenever they change
+  const saveGensets = (updatedGensets) => {
+    setGensets(updatedGensets);
+    localStorage.setItem(GENSETS_STORAGE_KEY, JSON.stringify(updatedGensets));
+  };
 
   const handleSave = (id) => {
     if (isAdding) {
@@ -38,11 +63,13 @@ export default function MobileGensetTracker({ isOpen, onClose, onGensetClick }) 
         lastUpdated: new Date().toISOString(),
         updatedBy: editForm.updatedBy || 'Admin',
       };
-      setGensets([newGenset, ...gensets]);
+      const updated = [newGenset, ...gensets];
+      saveGensets(updated);
       setIsAdding(false);
+      setEditForm({});
       toast.success("Genset berhasil ditambahkan");
     } else {
-      setGensets(gensets.map(g => g.id === id ? {
+      const updated = gensets.map(g => g.id === id ? {
         ...g,
         ...editForm,
         position: {
@@ -50,16 +77,31 @@ export default function MobileGensetTracker({ isOpen, onClose, onGensetClick }) 
           lng: editForm.lng ? parseFloat(editForm.lng) : g.position?.lng,
         },
         lastUpdated: new Date().toISOString(),
-      } : g));
+      } : g);
+      saveGensets(updated);
       setIsEditing(null);
+      setEditForm({});
       toast.success("Perubahan disimpan");
     }
+  };
+
+  const handleDelete = (id) => {
+    const updated = gensets.filter(g => g.id !== id);
+    saveGensets(updated);
+    setDeleteConfirm(null);
+    setIsEditing(null);
+    toast.success("Genset berhasil dihapus");
   };
 
   const handleGensetClick = (genset) => {
     if (onGensetClick && genset.position?.lat && genset.position?.lng) {
       onGensetClick(genset);
     }
+  };
+
+  const cancelAdd = () => {
+    setIsAdding(false);
+    setEditForm({});
   };
 
   return (
@@ -120,6 +162,7 @@ export default function MobileGensetTracker({ isOpen, onClose, onGensetClick }) 
 
             {gensets.map(genset => {
               const editing = isEditing === genset.id;
+              const showDelete = deleteConfirm === genset.id;
               return (
                 <div key={genset.id} className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
                   <div className="flex justify-between items-start mb-2">
@@ -128,10 +171,18 @@ export default function MobileGensetTracker({ isOpen, onClose, onGensetClick }) 
                     ) : (
                       <h3 className="font-bold text-slate-800 dark:text-white text-lg">{genset.name}</h3>
                     )}
-                    {editing ? (
+                    {showDelete ? (
+                      <div className="flex gap-1">
+                        <button onClick={() => handleDelete(genset.id)} className="p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => setDeleteConfirm(null)} className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-200"><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : editing ? (
                       <button onClick={() => handleSave(genset.id)} className="p-1.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200"><Save className="w-4 h-4" /></button>
                     ) : (
-                      <button onClick={() => { setIsEditing(genset.id); setIsAdding(false); setEditForm(genset); }} className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600"><Edit2 className="w-4 h-4" /></button>
+                      <div className="flex gap-1">
+                        <button onClick={() => { setIsEditing(genset.id); setIsAdding(false); setEditForm(genset); }} className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => setDeleteConfirm(genset.id)} className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     )}
                   </div>
 

@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // API Base URL - dapat dikonfigurasi via environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Default ke /api untuk production (same-origin deployment di port 8080)
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -124,6 +125,18 @@ export const mastersAPI = {
     getRooms: () => api.get('/masters/rooms')
 };
 
+// ============ Users API ============
+export const usersAPI = {
+    // Get all users
+    getAll: () => api.get('/users'),
+
+    // Update user role
+    updateRole: (id, role) => api.put(`/users/${id}/role`, { role }),
+
+    // Delete user
+    delete: (id) => api.delete(`/users/${id}`)
+};
+
 // ============ Auth API ============
 export const authAPI = {
     // Login
@@ -134,6 +147,9 @@ export const authAPI = {
 
     // Get current user
     me: () => api.get('/auth/me'),
+
+    // Update Profile
+    updateProfile: (data) => api.put('/auth/profile', data),
 
     // Logout
     logout: () => api.post('/auth/logout')
